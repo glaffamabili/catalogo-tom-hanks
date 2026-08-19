@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8200:3000"
+    environment:
+      - DB_HOST=35.226.64.52
+      - DB_USER=IAC_2026_02_amabili_flor
+      - DB_PASSWORD=OLv1YqcvRAjZws
+      - DB_NAME=IAC_2026_02_amabili_flor
+      - TMDB_API_KEY=53fd45afe20e3aab10705dfcf05c8eb9
