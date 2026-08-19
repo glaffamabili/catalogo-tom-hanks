@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Tom Hanks</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .hidden { display: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+    .movie-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #fff; text-align: center; }
+    .movie-card img { max-width: 100%; border-radius: 4px; }
+    input, button, textarea { width: 100%; margin-top: 8px; padding: 10px; box-sizing: border-box; }
+    button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .nav { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- TELA DE AUTENTICAÇÃO -->
+    <div id="auth-section" class="card">
+      <h2>Entrar / Cadastrar</h2>
+      <input type="text" id="nome" placeholder="Seu Nome (Apenas para Cadastro)">
+      <input type="email" id="email" placeholder="Seu E-mail">
+      <input type="password" id="senha" placeholder="Sua Senha">
+      <button onclick="login()">Entrar</button>
+      <button onclick="cadastrar()" style="background: #28a745; margin-top: 5px;">Cadastrar Conta</button>
+      <p id="auth-msg" style="color: red;"></p>
+    </div>
+
+    <!-- TELA PRINCIPAL (APÓS LOGIN) -->
+    <div id="app-section" class="card hidden">
+      <div class="nav">
+        <h2>Olá, <span id="user-display"></span>!</h2>
+        <button onclick="logout()" style="width: auto; background: #dc3545;">Sair</button>
+      </div>
+      <hr>
+
+      <h3>Filmes de Tom Hanks (TMDB)</h3>
+      <div id="movies-list" class="grid">Carregando filmes...</div>
+
+      <hr style="margin: 30px 0;">
+
+      <h3>Meus Favoritos</h3>
+      <div id="favs-list" class="grid">Nenhum favorito ainda.</div>
+
+      <hr style="margin: 30px 0;">
+
+      <h3>Meus Comentários</h3>
+      <div id="comments-list">Nenhum comentário ainda.</div>
+    </div>
+
+  </div>
+
+  <script>
+    async function login() {
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha })
+      });
+      const data = await res.json();
+      if (res.ok) { carregarDados(); } 
+      else { document.getElementById('auth-msg').innerText = data.error; }
+    }
+
+    async function cadastrar() {
+      const nome = document.getElementById('nome').value;
+      const email = document.getElementById('email').value;
+      const senha = document.getElementById('senha').value;
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha })
+      });
+      const data = await res.json();
+      if (res.ok) { carregarDados(); } 
+      else { document.getElementById('auth-msg').innerText = data.error; }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      location.reload();
+    }
+
+    async function carregarDados() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+
+      // Buscar Perfil
+      const meRes = await fetch('/api/me');
+      const me = await meRes.json();
+      document.getElementById('user-display').innerText = me.nome;
+
+      // Buscar Filmes TMDB
+      const mRes = await fetch('/api/movies');
+      const movies = await mRes.json();
+      const mContainer = document.getElementById('movies-list');
+      mContainer.innerHTML = movies.map(m => `
+        <div class="movie-card">
+          <img src="${m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : 'https://via.placeholder.com/150'}" />
+          <h4>${m.title}</h4>
+          <button onclick="favoritar(${m.id}, '${m.title.replace(/'/g, "\\'")}', '${m.poster_path}')">★ Favoritar</button>
+          <textarea id="comm-${m.id}" placeholder="Escreva um comentário..."></textarea>
+          <button onclick="comentar(${m.id})" style="background:#17a2b8;">Enviar Comentário</button>
+        </div>
+      `).join('');
+
+      carregarFavoritos();
+      carregarComentarios();
+    }
+
+    async function favoritar(tmdb_movie_id, titulo, poster_path) {
+      await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_movie_id, titulo, poster_path })
+      });
+      carregarFavoritos();
+    }
+
+    async function carregarFavoritos() {
+      const res = await fetch('/api/favorites');
+      const favs = await res.json();
+      const container = document.getElementById('favs-list');
+      container.innerHTML = favs.length ? favs.map(f => `
+        <div class="movie-card">
+          <img src="https://image.tmdb.org/t/p/w500${f.poster_path}" />
+          <h4>${f.titulo}</h4>
+        </div>
+      `).join('') : '<p>Nenhum favorito cadastrado.</p>';
+    }
+
+    async function comentar(tmdb_movie_id) {
+      const texto = document.getElementById(`comm-${tmdb_movie_id}`).value;
+      if (!texto) return alert('Digite algo para comentar!');
+      await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_movie_id, texto })
+      });
+      document.getElementById(`comm-${tmdb_movie_id}`).value = '';
+      carregarComentarios();
+    }
+
+    async function carregarComentarios() {
+      const res = await fetch('/api/comments');
+      const comms = await res.json();
+      const container = document.getElementById('comments-list');
+      container.innerHTML = comms.length ? comms.map(c => `
+        <div style="border-bottom: 1px solid #ccc; padding: 5px 0;">
+          <p><strong>Filme ID ${c.tmdb_movie_id}:</strong> ${c.texto}</p>
+        </div>
+      `).join('') : '<p>Nenhum comentário cadastrado.</p>';
+    }
+  </script>
+</body>
+</html>
