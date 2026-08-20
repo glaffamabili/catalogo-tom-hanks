@@ -10,4 +10,4 @@ services:
       - DB_USER=IAC_2026_02_amabili_flor
       - DB_PASSWORD=OLv1YqcvRAjZws
       - DB_NAME=IAC_2026_02_amabili_flor
-      - TMDB_API_KEY=53fd45afe20e3aab10705dfcf05c8eb9
+      - TMDB_API_KEY=${TMDB_API_KEY}
