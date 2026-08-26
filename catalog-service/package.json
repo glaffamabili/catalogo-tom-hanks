@@ -1,0 +1,14 @@
+{
+  "name": "catalog-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7",
+    "node-fetch": "^2.7.0"
+  }
+}
