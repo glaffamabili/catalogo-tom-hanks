@@ -1,6 +1,6 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
@@ -17,15 +17,43 @@ const pool = mysql.createPool({
   connectionLimit: 10
 });
 
-// Configuração do Transportador SMTP (Mailtrap)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io',
-  port: process.env.SMTP_PORT || 2525,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+// Inicialização automática das tabelas e colunas necessárias
+async function initDb() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reset_tokens (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        token VARCHAR(255) NOT NULL,
+        usuario_id INT NOT NULL,
+        criado_em DATETIME NOT NULL,
+        expira_em DATETIME NOT NULL,
+        usado TINYINT(1) DEFAULT 0,
+        INDEX (token)
+      ) ENGINE=InnoDB;
+    `);
+    const [cols] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'role'");
+    if (cols.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN role VARCHAR(50) DEFAULT 'usuario'");
+    }
+    console.log('Banco de dados verificado e inicializado com sucesso.');
+  } catch (err) {
+    console.error('Erro ao inicializar tabelas do banco:', err);
   }
-});
+}
+initDb();
+
+function getTransporter() {
+  const host = process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io';
+  const port = parseInt(process.env.SMTP_PORT, 10) || 2525;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    auth: (user && pass) ? { user, pass } : undefined
+  });
+}
 
 // Cadastro com Hash de Senha (bcrypt)
 app.post('/register', async (req, res) => {
@@ -41,8 +69,9 @@ app.post('/register', async (req, res) => {
     );
     res.json({ success: true, userId: result.insertId, role: userRole });
   } catch (err) {
+    console.error('Erro no cadastro:', err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'E-mail em uso.' });
-    res.status(500).json({ error: 'Erro no cadastro.' });
+    res.status(500).json({ error: 'Erro no cadastro: ' + (err.sqlMessage || err.message) });
   }
 });
 
@@ -57,15 +86,18 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(senha, user.senha_hash);
     if (!match) return res.status(401).json({ error: 'Credenciais inválidas.' });
 
-    res.json({ success: true, userId: user.id, nome: user.nome, role: user.role });
+    res.json({ success: true, userId: user.id, nome: user.nome, role: user.role || 'usuario' });
   } catch (err) {
-    res.status(500).json({ error: 'Erro no login.' });
+    console.error('Erro no login:', err);
+    res.status(500).json({ error: 'Erro no login: ' + (err.sqlMessage || err.message) });
   }
 });
 
 // Solicitação de Recuperação de Senha (Expira em 30 min)
 app.post('/forgot-password', async (req, res) => {
   const { email, appUrl } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-mail não informado.' });
+
   try {
     const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     if (rows.length === 0) return res.status(404).json({ error: 'E-mail não encontrado.' });
@@ -80,20 +112,43 @@ app.post('/forgot-password', async (req, res) => {
       [token, userId, agora, expiraEm]
     );
 
-    const resetLink = `${appUrl}/reset-password.html?token=${token}`;
-    
+    const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:8200';
+    const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.warn('AVISO: SMTP_USER e SMTP_PASS não configurados. Link gerado:', resetLink);
+      return res.status(500).json({ 
+        error: 'Serviço de e-mail não configurado no Portainer/ambiente. Configure SMTP_USER e SMTP_PASS.' 
+      });
+    }
+
+    const transporter = getTransporter();
     await transporter.sendMail({
       from: '"Catálogo Tom Hanks" <no-reply@catalogo.com>',
       to: email,
-      subject: 'Recuperação de Senha',
-      html: `<p>Você solicitou a redefinição de senha.</p>
-             <p>Clique no link abaixo para alterar (válido por 30 minutos):</p>
-             <a href="${resetLink}">${resetLink}</a>`
+      subject: 'Recuperação de Senha - Catálogo Tom Hanks',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2>Recuperação de Senha</h2>
+          <p>Você solicitou a redefinição de senha da sua conta no <strong>Catálogo Tom Hanks</strong>.</p>
+          <p>Clique no link abaixo para cadastrar uma nova senha (válido por 30 minutos):</p>
+          <p style="margin: 20px 0;">
+            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block;">
+              Redefinir Minha Senha
+            </a>
+          </p>
+          <p>Se o botão acima não funcionar, copie e cole este link no seu navegador:</p>
+          <p><a href="${resetLink}">${resetLink}</a></p>
+          <hr style="margin-top: 30px; border: none; border-top: 1px solid #ccc;" />
+          <p style="font-size: 12px; color: #777;">Se você não solicitou essa alteração, ignore este e-mail.</p>
+        </div>
+      `
     });
 
-    res.json({ success: true, message: 'E-mail enviado via Mailtrap.' });
+    res.json({ success: true, message: 'E-mail de recuperação enviado com sucesso!' });
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao gerar recuperação.' });
+    console.error('Erro ao gerar recuperação de senha:', err);
+    res.status(500).json({ error: 'Erro ao enviar e-mail de recuperação: ' + (err.message || err) });
   }
 });
 
@@ -124,7 +179,8 @@ app.post('/reset-password', async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao redefinir a senha.' });
+    console.error('Erro ao redefinir senha:', err);
+    res.status(500).json({ error: 'Erro ao redefinir a senha: ' + (err.message || err) });
   }
 });
 
@@ -135,8 +191,10 @@ app.get('/verify-user/:id', async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Não encontrado.' });
     res.json(rows[0]);
   } catch (err) {
+    console.error('Erro ao buscar usuário:', err);
     res.status(500).json({ error: 'Erro ao buscar dados.' });
   }
 });
 
-app.listen(3000, () => console.log('Auth Service rodando na porta interna 3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Auth Service rodando na porta interna ${PORT}`));
