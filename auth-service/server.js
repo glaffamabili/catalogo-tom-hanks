@@ -44,15 +44,24 @@ initDb();
 
 function getTransporter() {
   const host = process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io';
-  const port = parseInt(process.env.SMTP_PORT, 10) || 2525;
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
   return nodemailer.createTransport({
     host,
     port,
-    auth: (user && pass) ? { user, pass } : undefined
+    secure: port === 465,
+    auth: (user && pass) ? { user, pass } : undefined,
+    tls: {
+      rejectUnauthorized: false
+    }
   });
+}
+
+function getSenderAddress() {
+  const fromEmail = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@catalogo.com';
+  return `"Catálogo Tom Hanks" <${fromEmail}>`;
 }
 
 // Cadastro com Hash de Senha (bcrypt) e envio de e-mail de boas-vindas
@@ -74,7 +83,7 @@ app.post('/register', async (req, res) => {
         const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:8200';
         const transporter = getTransporter();
         await transporter.sendMail({
-          from: '"Catálogo Tom Hanks" <no-reply@catalogo.com>',
+          from: getSenderAddress(),
           to: email,
           subject: '🎉 Bem-vindo(a) ao Catálogo Tom Hanks!',
           html: `
@@ -169,7 +178,7 @@ app.post('/forgot-password', async (req, res) => {
 
     const transporter = getTransporter();
     await transporter.sendMail({
-      from: '"Catálogo Tom Hanks" <no-reply@catalogo.com>',
+      from: getSenderAddress(),
       to: email,
       subject: 'Recuperação de Senha - Catálogo Tom Hanks',
       html: `
