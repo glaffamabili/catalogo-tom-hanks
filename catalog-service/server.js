@@ -37,10 +37,14 @@ const exigeLogin = (req, res, next) => {
 // Proxies para o Microsserviço de Autenticação
 app.post('/api/register', async (req, res) => {
   try {
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const proto = req.get('x-forwarded-proto') || req.protocol;
+    const appUrl = process.env.APP_URL || `${proto}://${host}`;
+
     const response = await fetch(`${AUTH_SERVICE_URL}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify({ ...req.body, appUrl })
     });
     const data = await response.json();
     if (response.ok) req.session.userId = data.userId;

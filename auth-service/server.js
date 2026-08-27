@@ -55,9 +55,9 @@ function getTransporter() {
   });
 }
 
-// Cadastro com Hash de Senha (bcrypt)
+// Cadastro com Hash de Senha (bcrypt) e envio de e-mail de boas-vindas
 app.post('/register', async (req, res) => {
-  const { nome, email, senha, role } = req.body;
+  const { nome, email, senha, role, appUrl } = req.body;
   if (!nome || !email || !senha) return res.status(400).json({ error: 'Dados incompletos.' });
 
   try {
@@ -67,6 +67,51 @@ app.post('/register', async (req, res) => {
       'INSERT INTO usuarios (nome, email, senha_hash, role) VALUES (?, ?, ?, ?)',
       [nome, email, hash, userRole]
     );
+
+    // Envio do e-mail de boas-vindas
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:8200';
+        const transporter = getTransporter();
+        await transporter.sendMail({
+          from: '"Catálogo Tom Hanks" <no-reply@catalogo.com>',
+          to: email,
+          subject: '🎉 Bem-vindo(a) ao Catálogo Tom Hanks!',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+              <h2 style="color: #2c3e50; text-align: center;">🎬 Bem-vindo(a), ${nome}!</h2>
+              <p style="font-size: 16px; color: #555; line-height: 1.6;">
+                Sua conta no <strong>Catálogo Tom Hanks</strong> foi criada com sucesso!
+              </p>
+              <p style="font-size: 15px; color: #555; line-height: 1.6;">
+                Agora você pode explorar toda a filmografia do nosso astro favorito, salvar seus títulos preferidos e compartilhar suas opiniões com outros cinéfilos.
+              </p>
+              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #333;">O que você pode fazer:</h4>
+                <ul style="color: #666; padding-left: 20px; line-height: 1.8;">
+                  <li>⭐ <strong>Explorar filmes</strong> clássicos e sucessos de bilheteria</li>
+                  <li>❤️ <strong>Favoritar</strong> os filmes que você mais ama</li>
+                  <li>💬 <strong>Comentar</strong> e avaliar as atuações</li>
+                </ul>
+              </div>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${baseUrl}" style="background-color: #007bff; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 4px; display: inline-block;">
+                  Acessar o Catálogo
+                </a>
+              </div>
+              <hr style="border: none; border-top: 1px solid #eeeeee; margin: 25px 0;" />
+              <p style="font-size: 12px; color: #999; text-align: center;">
+                Este é um e-mail automático. Se você não realizou este cadastro, pode ignorar esta mensagem.
+              </p>
+            </div>
+          `
+        });
+        console.log(`E-mail de boas-vindas enviado para ${email}`);
+      } catch (mailErr) {
+        console.error('Erro ao enviar e-mail de boas-vindas:', mailErr);
+      }
+    }
+
     res.json({ success: true, userId: result.insertId, role: userRole });
   } catch (err) {
     console.error('Erro no cadastro:', err);

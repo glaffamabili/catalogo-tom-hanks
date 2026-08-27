@@ -69,7 +69,10 @@
         body: JSON.stringify({ nome, email, senha })
       });
       const data = await res.json();
-      if (res.ok) { carregarDados(); } 
+      if (res.ok) { 
+        alert('Cadastro realizado com sucesso! Um e-mail de boas-vindas foi enviado.');
+        carregarDados(); 
+      } 
       else { document.getElementById('auth-msg').innerText = data.error; }
     }
 
