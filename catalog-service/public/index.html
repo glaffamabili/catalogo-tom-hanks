@@ -2,163 +2,1458 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Catálogo Tom Hanks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Tom Hanks | Filmes & Favoritos</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    body { font-family: sans-serif; background: #f4f4f9; padding: 20px; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .hidden { display: none; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-    .movie-card { border: 1px solid #ddd; padding: 10px; border-radius: 6px; text-align: center; }
-    input, button, textarea { width: 100%; margin-top: 8px; padding: 10px; box-sizing: border-box; }
-    button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    :root {
+      --bg-main: #0b0f19;
+      --bg-card: #151d30;
+      --bg-card-hover: #1c2742;
+      --bg-input: #0f172a;
+      --border-color: #263352;
+      --accent: #e50914;
+      --accent-hover: #f40612;
+      --accent-gold: #f59e0b;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Toasts / Notificações */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 14px 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      animation: slideIn 0.3s ease forwards;
+      min-width: 280px;
+      max-width: 400px;
+    }
+
+    .toast.success { border-left: 4px solid var(--accent-green); }
+    .toast.error { border-left: 4px solid var(--accent); }
+    .toast.info { border-left: 4px solid var(--accent-blue); }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Auth Layout */
+    .auth-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%);
+    }
+
+    .auth-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--accent), #b91c1c);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+    }
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      color: var(--accent);
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: var(--bg-input);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border-color);
+    }
+
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      background: transparent;
+    }
+
+    .auth-tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 14px;
+      color: var(--text-dim);
+      font-size: 15px;
+    }
+
+    .form-control {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 12px 14px 12px 42px;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: var(--accent-green);
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .btn-link {
+      background: transparent;
+      color: var(--accent-blue);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      margin-top: 14px;
+      text-decoration: underline;
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-link:hover {
+      color: #60a5fa;
+    }
+
+    .auth-error {
+      color: #f87171;
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: rgba(21, 29, 48, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 0;
+    }
+
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .nav-brand span {
+      color: var(--accent);
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .user-avatar {
+      width: 26px;
+      height: 26px;
+      background: var(--accent-blue);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .role-tag {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .btn-logout {
+      background: #ef4444;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-logout:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      padding: 40px 0 20px;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 10px;
+    }
+
+    .hero-subtitle {
+      color: var(--text-muted);
+      font-size: 16px;
+      max-width: 600px;
+      margin: 0 auto 30px;
+    }
+
+    /* App Nav Tabs */
+    .app-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .app-tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 10px 22px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-tab-btn:hover {
+      color: var(--text-main);
+      border-color: var(--text-dim);
+    }
+
+    .app-tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+    }
+
+    /* Search & Filter Bar */
+    .search-bar-wrapper {
+      max-width: 600px;
+      margin: 0 auto 36px;
+      position: relative;
+    }
+
+    .search-bar-wrapper input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 14px 20px 14px 46px;
+      border-radius: 50px;
+      font-size: 15px;
+      outline: none;
+      transition: var(--transition);
+      box-shadow: var(--shadow);
+    }
+
+    .search-bar-wrapper input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.2);
+    }
+
+    .search-bar-wrapper i {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 16px;
+    }
+
+    /* Grid de Filmes */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-count {
+      background: var(--border-color);
+      color: var(--text-main);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+
+    .movie-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .movie-card:hover {
+      transform: translateY(-6px);
+      border-color: #3b82f6;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .poster-container {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: var(--bg-input);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .poster-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .movie-card:hover .poster-container img {
+      transform: scale(1.05);
+    }
+
+    .rating-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      color: var(--accent-gold);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .movie-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .movie-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      color: var(--text-main);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 40px;
+    }
+
+    .movie-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-actions {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-fav {
+      width: 100%;
+      background: rgba(229, 9, 20, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(229, 9, 20, 0.3);
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-fav:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-fav.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .comment-box-toggle {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .comment-box-toggle:hover {
+      color: var(--text-main);
+      border-color: var(--text-dim);
+    }
+
+    .inline-comment-form {
+      margin-top: 10px;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .inline-comment-form.open {
+      display: block;
+    }
+
+    .inline-comment-form textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      resize: vertical;
+      min-height: 60px;
+      outline: none;
+      margin-bottom: 6px;
+    }
+
+    .inline-comment-form textarea:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .btn-send-comment {
+      width: 100%;
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 7px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-send-comment:hover {
+      background: #2563eb;
+    }
+
+    /* Comentários Section */
+    .comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .comment-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .comment-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .comment-content {
+      flex: 1;
+    }
+
+    .comment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .comment-movie-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .comment-date {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .comment-text {
+      font-size: 14px;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h4 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      margin: 40px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modal Esqueci Senha */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      .hero-title { font-size: 26px; }
+      .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+      .nav-container { flex-direction: column; gap: 14px; }
+      .auth-card { padding: 28px 20px; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div id="auth-section" class="card">
-      <h2>Autenticação</h2>
-      <input type="text" id="nome" placeholder="Seu Nome (Cadastro)">
-      <input type="email" id="email" placeholder="Seu E-mail">
-      <input type="password" id="senha" placeholder="Sua Senha">
-      <button onclick="login()">Entrar</button>
-      <button onclick="cadastrar()" style="background: #28a745;">Cadastrar</button>
-      <hr>
-      <button onclick="esqueciSenha()" style="background: #ffc107; color: #000;">Esqueci Minha Senha</button>
-      <p id="auth-msg" style="color: red;"></p>
-    </div>
 
-    <div id="app-section" class="card hidden">
-      <div style="display: flex; justify-content: space-between;">
-        <h2>Olá, <span id="user-display"></span> (<span id="role-display"></span>)!</h2>
-        <button onclick="logout()" style="width: auto; background: #dc3545;">Sair</button>
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Modal Esqueci Minha Senha -->
+  <div id="forgot-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="fecharModalEsqueci()"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="font-size: 20px; margin-bottom: 10px;"><i class="fa-solid fa-key" style="color: var(--accent-gold); margin-right: 8px;"></i>Recuperar Senha</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+        Digite seu e-mail cadastrado. Enviaremos um link seguro para você redefinir sua senha.
+      </p>
+      <div class="form-group">
+        <label>Seu E-mail</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-envelope"></i>
+          <input type="email" id="forgot-email" class="form-control" placeholder="exemplo@gmail.com">
+        </div>
       </div>
-      <hr>
-      <h3>Filmes de Tom Hanks</h3>
-      <div id="movies-list" class="grid">Carregando...</div>
-      <hr>
-      <h3>Meus Favoritos</h3>
-      <div id="favs-list" class="grid"></div>
-      <hr>
-      <h3>Meus Comentários</h3>
-      <div id="comments-list"></div>
+      <button id="btn-forgot-send" class="btn btn-primary" onclick="enviarRecuperacao()">
+        <i class="fa-solid fa-paper-plane"></i> Enviar Link de Recuperação
+      </button>
     </div>
   </div>
 
+  <!-- SESSÃO DE AUTENTICAÇÃO -->
+  <div id="auth-section" class="auth-wrapper">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-film"></i></div>
+        <div class="brand-title">Tom<span>Hanks</span></div>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+        <button id="tab-register" class="auth-tab" onclick="switchAuthTab('register')">Criar Conta</button>
+      </div>
+
+      <!-- Formulário de Login -->
+      <form id="login-form" onsubmit="event.preventDefault(); login();">
+        <div class="form-group">
+          <label>E-mail</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="login-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Senha</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login" class="btn btn-primary">
+          <i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo
+        </button>
+
+        <button type="button" class="btn-link" onclick="abrirModalEsqueci()">
+          Esqueceu sua senha?
+        </button>
+      </form>
+
+      <!-- Formulário de Cadastro -->
+      <form id="register-form" class="hidden" onsubmit="event.preventDefault(); cadastrar();">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="reg-nome" class="form-control" placeholder="Seu nome" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>E-mail</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="reg-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Crie uma Senha</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="reg-senha" class="form-control" placeholder="••••••••" required>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-register" class="btn btn-success">
+          <i class="fa-solid fa-user-plus"></i> Concluir Cadastro
+        </button>
+      </form>
+
+      <div id="auth-msg" class="auth-error"></div>
+    </div>
+  </div>
+
+  <!-- SESSÃO PRINCIPAL DO APP -->
+  <div id="app-section" class="hidden">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="container nav-container">
+        <a href="#" class="nav-brand">
+          <i class="fa-solid fa-film" style="color: var(--accent);"></i>
+          <span>Tom</span>Hanks Movies
+        </a>
+
+        <div class="user-profile">
+          <div class="user-badge">
+            <div class="user-avatar" id="user-avatar-char">U</div>
+            <span id="user-display">Carregando...</span>
+            <span class="role-tag" id="role-display">USUÁRIO</span>
+          </div>
+          <button onclick="logout()" class="btn-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+      <!-- Hero -->
+      <section class="hero-banner">
+        <h1 class="hero-title">Filmografia Completa</h1>
+        <p class="hero-subtitle">Descubra, favorite e comente todos os sucessos e clássicos estrelados por Tom Hanks.</p>
+
+        <!-- Navegação por Abas -->
+        <div class="app-tabs">
+          <button class="app-tab-btn active" onclick="mostrarSecao('todos', this)">
+            <i class="fa-solid fa-clapperboard"></i> Todos os Filmes (<span id="total-movies-badge">0</span>)
+          </button>
+          <button class="app-tab-btn" onclick="mostrarSecao('favoritos', this)">
+            <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Meus Favoritos (<span id="total-favs-badge">0</span>)
+          </button>
+          <button class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Meus Comentários (<span id="total-comms-badge">0</span>)
+          </button>
+        </div>
+
+        <!-- Barra de Busca Rápida -->
+        <div class="search-bar-wrapper" id="search-container">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="movie-search" placeholder="Pesquisar por título de filme..." oninput="filtrarFilmes()">
+        </div>
+      </section>
+
+      <!-- SEÇÃO 1: TODOS OS FILMES -->
+      <section id="tab-content-todos">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-film" style="color: var(--accent);"></i> Filmes Disponíveis
+          </h2>
+        </div>
+        <div id="movies-list" class="movies-grid">
+          <div class="spinner"></div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: MEUS FAVORITOS -->
+      <section id="tab-content-favoritos" class="hidden">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Filmes Favoritados
+          </h2>
+        </div>
+        <div id="favs-list" class="movies-grid"></div>
+      </section>
+
+      <!-- SEÇÃO 3: MEUS COMENTÁRIOS -->
+      <section id="tab-content-comentarios" class="hidden">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Histórico de Comentários
+          </h2>
+        </div>
+        <div id="comments-list" class="comments-list"></div>
+      </section>
+    </main>
+  </div>
+
   <script>
+    let todosFilmes = [];
+    let favoritosSet = new Set();
+    let mapaFilmes = {};
+
+    // Sistema de Notificações Toast
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let icon = '<i class="fa-solid fa-circle-info" style="color: var(--accent-blue);"></i>';
+      if (type === 'success') icon = '<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i>';
+      if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation" style="color: var(--accent);"></i>';
+
+      toast.innerHTML = `${icon} <span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Alternar abas de autenticação
+    function switchAuthTab(tab) {
+      document.getElementById('auth-msg').innerText = '';
+      if (tab === 'login') {
+        document.getElementById('tab-login').classList.add('active');
+        document.getElementById('tab-register').classList.remove('active');
+        document.getElementById('login-form').classList.remove('hidden');
+        document.getElementById('register-form').classList.add('hidden');
+      } else {
+        document.getElementById('tab-register').classList.add('active');
+        document.getElementById('tab-login').classList.remove('active');
+        document.getElementById('register-form').classList.remove('hidden');
+        document.getElementById('login-form').classList.add('hidden');
+      }
+    }
+
+    // Modal Esqueci Minha Senha
+    function abrirModalEsqueci() {
+      document.getElementById('forgot-modal').classList.remove('hidden');
+      document.getElementById('forgot-email').value = document.getElementById('login-email').value || '';
+    }
+
+    function fecharModalEsqueci() {
+      document.getElementById('forgot-modal').classList.add('hidden');
+    }
+
+    async function enviarRecuperacao() {
+      const email = document.getElementById('forgot-email').value.trim();
+      if (!email) return showToast('Por favor, informe seu e-mail.', 'error');
+
+      const btn = document.getElementById('btn-forgot-send');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Link de recuperação enviado com sucesso!', 'success');
+          fecharModalEsqueci();
+        } else {
+          showToast(data.error || 'Erro ao solicitar recuperação.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de conexão com o servidor.', 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Login
     async function login() {
-      const email = document.getElementById('email').value;
-      const senha = document.getElementById('senha').value;
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha })
-      });
-      const data = await res.json();
-      if (res.ok) { carregarDados(); } 
-      else { document.getElementById('auth-msg').innerText = data.error; }
+      const email = document.getElementById('login-email').value.trim();
+      const senha = document.getElementById('login-senha').value;
+      const btn = document.getElementById('btn-login');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`Bem-vindo de volta, ${data.nome}!`, 'success');
+          carregarDados();
+        } else {
+          document.getElementById('auth-msg').innerText = data.error || 'Credenciais inválidas.';
+        }
+      } catch (err) {
+        document.getElementById('auth-msg').innerText = 'Erro ao conectar ao servidor.';
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo';
+        btn.disabled = false;
+      }
     }
 
+    // Cadastro
     async function cadastrar() {
-      const nome = document.getElementById('nome').value;
-      const email = document.getElementById('email').value;
-      const senha = document.getElementById('senha').value;
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, senha })
-      });
-      const data = await res.json();
-      if (res.ok) { 
-        alert('Cadastro realizado com sucesso! Um e-mail de boas-vindas foi enviado.');
-        carregarDados(); 
-      } 
-      else { document.getElementById('auth-msg').innerText = data.error; }
+      const nome = document.getElementById('reg-nome').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const senha = document.getElementById('reg-senha').value;
+      const btn = document.getElementById('btn-register');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando conta...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, email, senha })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Conta criada com sucesso! Enviamos um e-mail de boas-vindas 🎉', 'success');
+          carregarDados();
+        } else {
+          document.getElementById('auth-msg').innerText = data.error || 'Erro ao realizar cadastro.';
+        }
+      } catch (err) {
+        document.getElementById('auth-msg').innerText = 'Erro de comunicação ao cadastrar.';
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Concluir Cadastro';
+        btn.disabled = false;
+      }
     }
 
-    async function esqueciSenha() {
-      const email = document.getElementById('email').value;
-      if (!email) return alert('Digite o e-mail no campo acima.');
-      const res = await fetch('/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      alert(data.message || data.error);
-    }
-
+    // Logout
     async function logout() {
       await fetch('/api/logout', { method: 'POST' });
       location.reload();
     }
 
+    // Navegação de Abas do App
+    function mostrarSecao(secao, btn) {
+      document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+
+      document.getElementById('tab-content-todos').classList.add('hidden');
+      document.getElementById('tab-content-favoritos').classList.add('hidden');
+      document.getElementById('tab-content-comentarios').classList.add('hidden');
+
+      const searchContainer = document.getElementById('search-container');
+      if (secao === 'todos') {
+        document.getElementById('tab-content-todos').classList.remove('hidden');
+        searchContainer.classList.remove('hidden');
+      } else if (secao === 'favoritos') {
+        document.getElementById('tab-content-favoritos').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarFavoritos();
+      } else if (secao === 'comentarios') {
+        document.getElementById('tab-content-comentarios').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarComentarios();
+      }
+    }
+
+    // Carregamento Inicial do Usuário e Filmes
     async function carregarDados() {
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('app-section').classList.remove('hidden');
+      try {
+        const meRes = await fetch('/api/me');
+        if (!meRes.ok) {
+          document.getElementById('auth-section').classList.remove('hidden');
+          document.getElementById('app-section').classList.add('hidden');
+          return;
+        }
 
-      const meRes = await fetch('/api/me');
-      const me = await meRes.json();
-      document.getElementById('user-display').innerText = me.nome;
-      document.getElementById('role-display').innerText = me.role;
+        const me = await meRes.json();
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
 
-      const mRes = await fetch('/api/movies');
-      const movies = await mRes.json();
-      document.getElementById('movies-list').innerHTML = movies.map(m => `
-        <div class="movie-card">
-          <img src="${m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : 'https://via.placeholder.com/150'}" style="width:100%;" />
-          <h4>${m.title}</h4>
-          <button onclick="favoritar(${m.id}, '${m.title.replace(/'/g, "\\'")}', '${m.poster_path}')">★ Favoritar</button>
-          <textarea id="comm-${m.id}" placeholder="Comentário..."></textarea>
-          <button onclick="comentar(${m.id})" style="background:#17a2b8;">Comentar</button>
-        </div>
-      `).join('');
+        document.getElementById('user-display').innerText = me.nome;
+        document.getElementById('user-avatar-char').innerText = me.nome.charAt(0).toUpperCase();
+        document.getElementById('role-display').innerText = me.role || 'USUÁRIO';
 
-      carregarFavoritos();
-      carregarComentarios();
+        // Carregar Favoritos primeiro para sincronizar os botões
+        await carregarFavoritos();
+        await carregarFilmes();
+        await carregarComentarios();
+      } catch (err) {
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('app-section').classList.add('hidden');
+      }
     }
 
-    async function favoritar(tmdb_movie_id, titulo, poster_path) {
-      await fetch('/api/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tmdb_movie_id, titulo, poster_path })
-      });
-      carregarFavoritos();
+    // Carregar Filmes do TMDB
+    async function carregarFilmes() {
+      try {
+        const mRes = await fetch('/api/movies');
+        todosFilmes = await mRes.json();
+        
+        // Mapeia filmes para busca rápida
+        todosFilmes.forEach(f => {
+          mapaFilmes[f.id] = f.title;
+        });
+
+        document.getElementById('total-movies-badge').innerText = todosFilmes.length;
+        renderizarFilmes(todosFilmes);
+      } catch (err) {
+        document.getElementById('movies-list').innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <h4>Erro ao carregar filmes</h4>
+            <p>Não foi possível carregar a lista de filmes no momento.</p>
+          </div>
+        `;
+      }
     }
 
+    // Filtrar filmes em tempo real
+    function filtrarFilmes() {
+      const query = document.getElementById('movie-search').value.toLowerCase().trim();
+      const filtrados = todosFilmes.filter(m => 
+        (m.title && m.title.toLowerCase().includes(query)) ||
+        (m.character && m.character.toLowerCase().includes(query))
+      );
+      renderizarFilmes(filtrados);
+    }
+
+    // Renderizar Cards de Filmes
+    function renderizarFilmes(filmes) {
+      const container = document.getElementById('movies-list');
+      if (filmes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <i class="fa-solid fa-film"></i>
+            <h4>Nenhum filme encontrado</h4>
+            <p>Tente buscar por outro termo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filmes.map(m => {
+        const isFav = favoritosSet.has(m.id);
+        const posterUrl = m.poster_path 
+          ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
+          : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
+        
+        const ano = m.release_date ? m.release_date.substring(0, 4) : 'N/D';
+        const nota = m.vote_average ? m.vote_average.toFixed(1) : null;
+        const safeTitle = (m.title || '').replace(/'/g, "\\'");
+
+        return `
+          <div class="movie-card">
+            <div class="poster-container">
+              <img src="${posterUrl}" alt="${m.title}" loading="lazy" />
+              ${nota ? `<div class="rating-badge"><i class="fa-solid fa-star"></i> ${nota}</div>` : ''}
+            </div>
+            <div class="movie-body">
+              <h4 class="movie-title" title="${m.title}">${m.title}</h4>
+              <div class="movie-meta">
+                <span><i class="fa-regular fa-calendar"></i> ${ano}</span>
+                ${m.character ? `<span>• ${m.character.substring(0, 18)}</span>` : ''}
+              </div>
+
+              <div class="card-actions">
+                <button class="btn-fav ${isFav ? 'active' : ''}" onclick="toggleFavorito(${m.id}, '${safeTitle}', '${m.poster_path || ''}')">
+                  <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i> ${isFav ? 'Favoritado' : 'Favoritar'}
+                </button>
+
+                <button class="comment-box-toggle" onclick="toggleCommentBox(${m.id})">
+                  <i class="fa-regular fa-comment-dots"></i> Deixar Comentário
+                </button>
+
+                <div id="comment-box-${m.id}" class="inline-comment-form">
+                  <textarea id="comm-input-${m.id}" placeholder="Escreva sua opinião sobre este filme..."></textarea>
+                  <button class="btn-send-comment" onclick="enviarComentario(${m.id})">
+                    <i class="fa-solid fa-paper-plane"></i> Publicar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Toggle Formulário de Comentário Inline
+    function toggleCommentBox(movieId) {
+      const box = document.getElementById(`comment-box-${movieId}`);
+      box.classList.toggle('open');
+      if (box.classList.contains('open')) {
+        document.getElementById(`comm-input-${movieId}`).focus();
+      }
+    }
+
+    // Favoritar Filme
+    async function toggleFavorito(tmdb_movie_id, titulo, poster_path) {
+      try {
+        const res = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tmdb_movie_id, titulo, poster_path })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`"${titulo}" adicionado aos seus favoritos! ❤️`, 'success');
+          await carregarFavoritos();
+          filtrarFilmes();
+        } else {
+          showToast(data.error || 'Filme já está nos favoritos.', 'info');
+        }
+      } catch (err) {
+        showToast('Erro ao favoritar filme.', 'error');
+      }
+    }
+
+    // Carregar Favoritos
     async function carregarFavoritos() {
-      const res = await fetch('/api/favorites');
-      const favs = await res.json();
-      document.getElementById('favs-list').innerHTML = favs.map(f => `
-        <div class="movie-card">
-          <img src="https://image.tmdb.org/t/p/w500${f.poster_path}" style="width:100%;" />
-          <h4>${f.titulo}</h4>
-        </div>
-      `).join('');
+      try {
+        const res = await fetch('/api/favorites');
+        const favs = await res.json();
+        
+        favoritosSet = new Set(favs.map(f => f.tmdb_movie_id));
+        document.getElementById('total-favs-badge').innerText = favs.length;
+
+        const container = document.getElementById('favs-list');
+        if (favs.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+              <i class="fa-regular fa-heart"></i>
+              <h4>Nenhum filme favoritado ainda</h4>
+              <p>Explore a lista de filmes e clique em "Favoritar" para salvar seus preferidos!</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = favs.map(f => {
+          const posterUrl = f.poster_path 
+            ? `https://image.tmdb.org/t/p/w500${f.poster_path}`
+            : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
+
+          return `
+            <div class="movie-card">
+              <div class="poster-container">
+                <img src="${posterUrl}" alt="${f.titulo}" loading="lazy" />
+              </div>
+              <div class="movie-body">
+                <h4 class="movie-title">${f.titulo}</h4>
+                <div class="card-actions">
+                  <button class="btn-fav active" style="cursor: default;">
+                    <i class="fa-solid fa-heart"></i> Favorito
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Erro ao carregar favoritos:', err);
+      }
     }
 
-    async function comentar(tmdb_movie_id) {
-      const texto = document.getElementById(`comm-${tmdb_movie_id}`).value;
-      if (!texto) return;
-      await fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tmdb_movie_id, texto })
-      });
-      document.getElementById(`comm-${tmdb_movie_id}`).value = '';
-      carregarComentarios();
+    // Enviar Comentário
+    async function enviarComentario(tmdb_movie_id) {
+      const input = document.getElementById(`comm-input-${tmdb_movie_id}`);
+      const texto = input.value.trim();
+      if (!texto) return showToast('Escreva algo antes de enviar o comentário.', 'error');
+
+      try {
+        const res = await fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tmdb_movie_id, texto })
+        });
+        if (res.ok) {
+          input.value = '';
+          toggleCommentBox(tmdb_movie_id);
+          showToast('Comentário publicado com sucesso! 💬', 'success');
+          carregarComentarios();
+        } else {
+          showToast('Erro ao publicar comentário.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação.', 'error');
+      }
     }
 
+    // Carregar Comentários
     async function carregarComentarios() {
-      const res = await fetch('/api/comments');
-      const comms = await res.json();
-      document.getElementById('comments-list').innerHTML = comms.map(c => `
-        <div style="border-bottom: 1px solid #ccc; padding: 5px 0;">
-          <p><strong>Filme ID ${c.tmdb_movie_id}:</strong> ${c.texto}</p>
-        </div>
-      `).join('');
+      try {
+        const res = await fetch('/api/comments');
+        const comms = await res.json();
+        
+        document.getElementById('total-comms-badge').innerText = comms.length;
+        const container = document.getElementById('comments-list');
+        
+        if (comms.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <i class="fa-regular fa-comments"></i>
+              <h4>Nenhum comentário registrado</h4>
+              <p>Compartilhe suas impressões e análises sobre os filmes de Tom Hanks!</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = comms.map(c => {
+          const nomeFilme = mapaFilmes[c.tmdb_movie_id] || `Filme #${c.tmdb_movie_id}`;
+          const dataFormatada = c.criado_em 
+            ? new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'Recentemente';
+
+          return `
+            <div class="comment-item">
+              <div class="comment-icon">
+                <i class="fa-solid fa-quote-left"></i>
+              </div>
+              <div class="comment-content">
+                <div class="comment-header">
+                  <span class="comment-movie-tag"><i class="fa-solid fa-film"></i> ${nomeFilme}</span>
+                  <span class="comment-date">${dataFormatada}</span>
+                </div>
+                <p class="comment-text">${c.texto}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Erro ao carregar comentários:', err);
+      }
     }
+
+    // Inicialização ao abrir a página
+    carregarDados();
   </script>
 </body>
 </html>
