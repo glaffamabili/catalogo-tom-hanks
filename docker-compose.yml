@@ -7,8 +7,8 @@ networks:
 services:
   auth-service:
     build:
-      context: .
-      dockerfile: auth-service/Dockerfile
+      context: ./auth-service
+      dockerfile: Dockerfile
     networks:
       - app-network
     environment:
@@ -23,8 +23,8 @@ services:
 
   catalog-service:
     build:
-      context: .
-      dockerfile: catalog-service/Dockerfile
+      context: ./catalog-service
+      dockerfile: Dockerfile
     ports:
       - "8200:3000"
     networks:
