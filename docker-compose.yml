@@ -1,13 +1,38 @@
 version: '3.8'
 
+networks:
+  app-network:
+    driver: bridge
+
 services:
-  web:
-    build: .
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    networks:
+      - app-network
+    environment:
+      - DB_HOST=35.226.64.52
+      - DB_USER=IAC_2026_02_amabili_flor
+      - DB_PASSWORD=OLv1YqcvRAjZws
+      - DB_NAME=IAC_2026_02_amabili_flor
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: catalog-service/Dockerfile
     ports:
       - "8200:3000"
+    networks:
+      - app-network
     environment:
       - DB_HOST=35.226.64.52
       - DB_USER=IAC_2026_02_amabili_flor
       - DB_PASSWORD=OLv1YqcvRAjZws
       - DB_NAME=IAC_2026_02_amabili_flor
       - TMDB_API_KEY=${TMDB_API_KEY}
+      - AUTH_SERVICE_URL=http://auth-service:3000
