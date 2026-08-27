@@ -16,10 +16,11 @@ services:
       - DB_USER=IAC_2026_02_amabili_flor
       - DB_PASSWORD=OLv1YqcvRAjZws
       - DB_NAME=IAC_2026_02_amabili_flor
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_HOST=${SMTP_HOST:-sandbox.smtp.mailtrap.io}
+      - SMTP_PORT=${SMTP_PORT:-2525}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
+      - APP_URL=${APP_URL}
 
   catalog-service:
     build:
@@ -36,3 +37,4 @@ services:
       - DB_NAME=IAC_2026_02_amabili_flor
       - TMDB_API_KEY=${TMDB_API_KEY}
       - AUTH_SERVICE_URL=http://auth-service:3000
+      - APP_URL=${APP_URL}

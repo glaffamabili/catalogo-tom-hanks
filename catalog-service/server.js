@@ -4,6 +4,7 @@ const cookieSession = require('cookie-session');
 const fetch = require('node-fetch');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -45,6 +46,7 @@ app.post('/api/register', async (req, res) => {
     if (response.ok) req.session.userId = data.userId;
     res.status(response.status).json(data);
   } catch (err) {
+    console.error('Erro no proxy register:', err);
     res.status(500).json({ error: 'Erro de comunicação com o serviço de Autenticação.' });
   }
 });
@@ -60,13 +62,17 @@ app.post('/api/login', async (req, res) => {
     if (response.ok) req.session.userId = data.userId;
     res.status(response.status).json(data);
   } catch (err) {
+    console.error('Erro no proxy login:', err);
     res.status(500).json({ error: 'Erro de comunicação com o serviço de Autenticação.' });
   }
 });
 
 app.post('/api/forgot-password', async (req, res) => {
   try {
-    const appUrl = `${req.protocol}://${req.get('host')}`;
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const proto = req.get('x-forwarded-proto') || req.protocol;
+    const appUrl = process.env.APP_URL || `${proto}://${host}`;
+
     const response = await fetch(`${AUTH_SERVICE_URL}/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -75,6 +81,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
+    console.error('Erro no proxy forgot-password:', err);
     res.status(500).json({ error: 'Erro de comunicação com o serviço de Autenticação.' });
   }
 });
