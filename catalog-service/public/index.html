@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo Tom Hanks | Filmes & Favoritos</title>
+  <title>Catálogo Tom Hanks | Filmes, Favoritos & Moderação RBAC</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +22,7 @@
       --accent-gold: #f59e0b;
       --accent-blue: #3b82f6;
       --accent-green: #10b981;
+      --accent-purple: #8b5cf6;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
@@ -82,12 +83,13 @@
       font-weight: 500;
       animation: slideIn 0.3s ease forwards;
       min-width: 280px;
-      max-width: 400px;
+      max-width: 440px;
     }
 
     .toast.success { border-left: 4px solid var(--accent-green); }
     .toast.error { border-left: 4px solid var(--accent); }
     .toast.info { border-left: 4px solid var(--accent-blue); }
+    .toast.warning { border-left: 4px solid var(--accent-gold); }
 
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
@@ -110,7 +112,7 @@
       border-radius: 16px;
       padding: 40px;
       width: 100%;
-      max-width: 440px;
+      max-width: 460px;
       box-shadow: var(--shadow);
     }
 
@@ -215,6 +217,12 @@
     .form-control:focus {
       border-color: var(--accent-blue);
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    select.form-control {
+      padding-left: 42px;
+      appearance: none;
+      cursor: pointer;
     }
 
     .btn {
@@ -342,13 +350,23 @@
     }
 
     .role-tag {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-gold);
-      padding: 2px 8px;
+      padding: 3px 8px;
       border-radius: 4px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-tag.admin {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .role-tag.usuario {
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-blue);
     }
 
     .btn-logout {
@@ -425,6 +443,18 @@
       border-color: var(--accent);
       color: #fff;
       box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+    }
+
+    .app-tab-btn.admin-tab {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: var(--accent-gold);
+    }
+
+    .app-tab-btn.admin-tab.active {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-color: #f59e0b;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
     }
 
     /* Search & Filter Bar */
@@ -681,21 +711,27 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
+      margin-bottom: 60px;
     }
 
     .comment-item {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 16px 20px;
+      padding: 18px 20px;
       display: flex;
       gap: 16px;
       align-items: flex-start;
+      transition: var(--transition);
+    }
+
+    .comment-item:hover {
+      border-color: #3b82f6;
     }
 
     .comment-icon {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       background: rgba(59, 130, 246, 0.15);
       color: var(--accent-blue);
       border-radius: 50%;
@@ -714,17 +750,34 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .comment-author-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .comment-author-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-main);
     }
 
     .comment-movie-tag {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: var(--accent-gold);
+      background: rgba(245, 158, 11, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
     }
 
     .comment-date {
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-dim);
     }
 
@@ -732,6 +785,121 @@
       font-size: 14px;
       color: var(--text-main);
       line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .comment-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-delete-comment {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-delete-comment:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-delete-comment.admin-mod {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-gold);
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-delete-comment.admin-mod:hover {
+      background: #d97706;
+      color: white;
+    }
+
+    /* Admin Users Table */
+    .admin-table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 60px;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .admin-table th {
+      background: var(--bg-input);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .admin-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .admin-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .btn-role-toggle {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-promote {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-promote:hover {
+      background: var(--accent-gold);
+      color: #000;
+    }
+
+    .btn-demote {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-demote:hover {
+      background: #3b82f6;
+      color: #fff;
     }
 
     /* Empty State */
@@ -822,6 +990,7 @@
       .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
       .nav-container { flex-direction: column; gap: 14px; }
       .auth-card { padding: 28px 20px; }
+      .admin-table th, .admin-table td { padding: 10px 8px; font-size: 12px; }
     }
   </style>
 </head>
@@ -917,6 +1086,17 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label>Tipo de Conta (Papel RBAC)</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-shield-halved"></i>
+            <select id="reg-role" class="form-control">
+              <option value="usuario">Usuário Comum</option>
+              <option value="admin">Administrador (Admin)</option>
+            </select>
+          </div>
+        </div>
+
         <button type="submit" id="btn-register" class="btn btn-success">
           <i class="fa-solid fa-user-plus"></i> Concluir Cadastro
         </button>
@@ -965,7 +1145,10 @@
             <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Meus Favoritos (<span id="total-favs-badge">0</span>)
           </button>
           <button class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
-            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Meus Comentários (<span id="total-comms-badge">0</span>)
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comunidade (<span id="total-comms-badge">0</span>)
+          </button>
+          <button id="tab-btn-admin" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('admin', this)">
+            <i class="fa-solid fa-shield-halved"></i> Painel Admin (<span id="total-users-badge">0</span>)
           </button>
         </div>
 
@@ -998,19 +1181,45 @@
         <div id="favs-list" class="movies-grid"></div>
       </section>
 
-      <!-- SEÇÃO 3: MEUS COMENTÁRIOS -->
+      <!-- SEÇÃO 3: COMENTÁRIOS E MODERAÇÃO RBAC -->
       <section id="tab-content-comentarios" class="hidden">
         <div class="section-header">
           <h2 class="section-title">
-            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Histórico de Comentários
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comentários da Comunidade
           </h2>
         </div>
         <div id="comments-list" class="comments-list"></div>
+      </section>
+
+      <!-- SEÇÃO 4: PAINEL ADMINISTRATIVO (EXCLUSIVO ADMIN) -->
+      <section id="tab-content-admin" class="hidden">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-users-gear" style="color: var(--accent-gold);"></i> Gerenciamento de Usuários (Controle RBAC)
+          </h2>
+        </div>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Papel Atual (Role)</th>
+                <th>Ações de Admin</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body">
+              <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando usuários...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   </div>
 
   <script>
+    let usuarioAtual = null;
     let todosFilmes = [];
     let favoritosSet = new Set();
     let mapaFilmes = {};
@@ -1024,6 +1233,7 @@
       let icon = '<i class="fa-solid fa-circle-info" style="color: var(--accent-blue);"></i>';
       if (type === 'success') icon = '<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i>';
       if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation" style="color: var(--accent);"></i>';
+      if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-gold);"></i>';
 
       toast.innerHTML = `${icon} <span>${message}</span>`;
       container.appendChild(toast);
@@ -1122,11 +1332,12 @@
       }
     }
 
-    // Cadastro
+    // Cadastro com Papel (Role)
     async function cadastrar() {
       const nome = document.getElementById('reg-nome').value.trim();
       const email = document.getElementById('reg-email').value.trim();
       const senha = document.getElementById('reg-senha').value;
+      const role = document.getElementById('reg-role').value;
       const btn = document.getElementById('btn-register');
 
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando conta...';
@@ -1136,7 +1347,7 @@
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nome, email, senha })
+          body: JSON.stringify({ nome, email, senha, role })
         });
         const data = await res.json();
         if (res.ok) {
@@ -1167,6 +1378,7 @@
       document.getElementById('tab-content-todos').classList.add('hidden');
       document.getElementById('tab-content-favoritos').classList.add('hidden');
       document.getElementById('tab-content-comentarios').classList.add('hidden');
+      document.getElementById('tab-content-admin').classList.add('hidden');
 
       const searchContainer = document.getElementById('search-container');
       if (secao === 'todos') {
@@ -1180,6 +1392,10 @@
         document.getElementById('tab-content-comentarios').classList.remove('hidden');
         searchContainer.classList.add('hidden');
         carregarComentarios();
+      } else if (secao === 'admin') {
+        document.getElementById('tab-content-admin').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarUsuariosAdmin();
       }
     }
 
@@ -1193,13 +1409,25 @@
           return;
         }
 
-        const me = await meRes.json();
+        usuarioAtual = await meRes.json();
         document.getElementById('auth-section').classList.add('hidden');
         document.getElementById('app-section').classList.remove('hidden');
 
-        document.getElementById('user-display').innerText = me.nome;
-        document.getElementById('user-avatar-char').innerText = me.nome.charAt(0).toUpperCase();
-        document.getElementById('role-display').innerText = me.role || 'USUÁRIO';
+        document.getElementById('user-display').innerText = usuarioAtual.nome;
+        document.getElementById('user-avatar-char').innerText = usuarioAtual.nome.charAt(0).toUpperCase();
+        
+        const roleBadge = document.getElementById('role-display');
+        roleBadge.innerText = (usuarioAtual.role || 'usuario').toUpperCase();
+        roleBadge.className = `role-tag ${usuarioAtual.role || 'usuario'}`;
+
+        // Se for admin, exibe a aba de administração
+        const adminTab = document.getElementById('tab-btn-admin');
+        if (usuarioAtual.role === 'admin') {
+          adminTab.classList.remove('hidden');
+          carregarContadorUsuarios();
+        } else {
+          adminTab.classList.add('hidden');
+        }
 
         // Carregar Favoritos primeiro para sincronizar os botões
         await carregarFavoritos();
@@ -1406,7 +1634,7 @@
       }
     }
 
-    // Carregar Comentários
+    // Carregar Comentários da Comunidade
     async function carregarComentarios() {
       try {
         const res = await fetch('/api/comments');
@@ -1432,23 +1660,168 @@
             ? new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             : 'Recentemente';
 
+          const isOwner = usuarioAtual && (usuarioAtual.id === c.usuario_id);
+          const isAdmin = usuarioAtual && (usuarioAtual.role === 'admin');
+
+          let deleteBtnHtml = '';
+          if (isOwner) {
+            deleteBtnHtml = `
+              <button class="btn-delete-comment" onclick="excluirComentario(${c.id})">
+                <i class="fa-solid fa-trash-can"></i> Excluir meu comentário
+              </button>
+            `;
+          } else if (isAdmin) {
+            deleteBtnHtml = `
+              <button class="btn-delete-comment admin-mod" onclick="excluirComentario(${c.id})">
+                <i class="fa-solid fa-shield-halved"></i> Moderar / Excluir (Admin)
+              </button>
+            `;
+          }
+
+          const autorTag = (c.autor_role === 'admin') 
+            ? '<span class="role-tag admin" style="font-size: 10px; margin-left: 6px;">ADMIN</span>' 
+            : '';
+
           return `
-            <div class="comment-item">
+            <div class="comment-item" id="comment-card-${c.id}">
               <div class="comment-icon">
                 <i class="fa-solid fa-quote-left"></i>
               </div>
               <div class="comment-content">
                 <div class="comment-header">
-                  <span class="comment-movie-tag"><i class="fa-solid fa-film"></i> ${nomeFilme}</span>
+                  <div class="comment-author-info">
+                    <span class="comment-author-name">${c.autor_nome || 'Usuário'}</span>
+                    ${autorTag}
+                    <span class="comment-movie-tag"><i class="fa-solid fa-film"></i> ${nomeFilme}</span>
+                  </div>
                   <span class="comment-date">${dataFormatada}</span>
                 </div>
                 <p class="comment-text">${c.texto}</p>
+                <div class="comment-actions">
+                  ${deleteBtnHtml}
+                </div>
               </div>
             </div>
           `;
         }).join('');
       } catch (err) {
         console.error('Erro ao carregar comentários:', err);
+      }
+    }
+
+    // Excluir Comentário (RBAC Enforcement)
+    async function excluirComentario(commentId) {
+      if (!confirm('Deseja realmente excluir este comentário?')) return;
+
+      try {
+        const res = await fetch(`/api/comments/${commentId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(data.message || 'Comentário removido com sucesso!', 'success');
+          carregarComentarios();
+        } else if (res.status === 403) {
+          showToast(`❌ ${data.error || 'Acesso negado: 403 Forbidden.'}`, 'error');
+        } else {
+          showToast(data.error || 'Erro ao excluir comentário.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação ao excluir comentário.', 'error');
+      }
+    }
+
+    // Carregar Contador de Usuários no Painel Admin
+    async function carregarContadorUsuarios() {
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const users = await res.json();
+          document.getElementById('total-users-badge').innerText = users.length;
+        }
+      } catch (err) {}
+    }
+
+    // Carregar Lista de Usuários no Painel Admin
+    async function carregarUsuariosAdmin() {
+      const tbody = document.getElementById('users-table-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
+
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) {
+          const errData = await res.json();
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">${errData.error || 'Acesso negado.'}</td></tr>`;
+          return;
+        }
+
+        const users = await res.json();
+        document.getElementById('total-users-badge').innerText = users.length;
+
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum usuário cadastrado.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+          const isUserAdmin = (u.role === 'admin');
+          const isSelf = usuarioAtual && (usuarioAtual.id === u.id);
+
+          let actionBtn = '';
+          if (isSelf) {
+            actionBtn = '<span style="color: var(--text-dim); font-size: 12px;">Sua conta</span>';
+          } else if (isUserAdmin) {
+            actionBtn = `
+              <button class="btn-role-toggle btn-demote" onclick="alterarPapelUsuario(${u.id}, 'usuario')">
+                <i class="fa-solid fa-arrow-down"></i> Rebaixar a Usuário
+              </button>
+            `;
+          } else {
+            actionBtn = `
+              <button class="btn-role-toggle btn-promote" onclick="alterarPapelUsuario(${u.id}, 'admin')">
+                <i class="fa-solid fa-crown"></i> Promover a Admin
+              </button>
+            `;
+          }
+
+          return `
+            <tr>
+              <td><strong>#${u.id}</strong></td>
+              <td>${u.nome}</td>
+              <td>${u.email}</td>
+              <td>
+                <span class="role-tag ${u.role}">${(u.role || 'usuario').toUpperCase()}</span>
+              </td>
+              <td>${actionBtn}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">Erro ao carregar lista de usuários.</td></tr>';
+      }
+    }
+
+    // Alterar Papel de Usuário (Admin Action)
+    async function alterarPapelUsuario(userId, novoPapel) {
+      if (!confirm(`Deseja alterar o papel deste usuário para "${novoPapel}"?`)) return;
+
+      try {
+        const res = await fetch(`/api/users/${userId}/role`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: novoPapel })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(`Papel atualizado para ${novoPapel.toUpperCase()} com sucesso!`, 'success');
+          carregarUsuariosAdmin();
+        } else {
+          showToast(data.error || 'Erro ao alterar papel.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação ao alterar papel.', 'error');
       }
     }
 

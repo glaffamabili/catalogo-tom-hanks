@@ -250,5 +250,32 @@ app.get('/verify-user/:id', async (req, res) => {
   }
 });
 
+// Listar todos os usuários (para gerenciamento)
+app.get('/users', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, nome, email, role FROM usuarios ORDER BY id ASC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Erro ao listar usuários:', err);
+    res.status(500).json({ error: 'Erro ao listar usuários.' });
+  }
+});
+
+// Atualizar papel de usuário (promoção / rebaixamento)
+app.patch('/users/:id/role', async (req, res) => {
+  const { role } = req.body;
+  if (!role || !['usuario', 'admin'].includes(role)) {
+    return res.status(400).json({ error: 'Papel inválido. Deve ser "usuario" ou "admin".' });
+  }
+  try {
+    const [result] = await pool.query('UPDATE usuarios SET role = ? WHERE id = ?', [role, req.params.id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    res.json({ success: true, message: `Papel do usuário atualizado para "${role}".` });
+  } catch (err) {
+    console.error('Erro ao atualizar papel:', err);
+    res.status(500).json({ error: 'Erro ao atualizar papel do usuário.' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Auth Service rodando na porta interna ${PORT}`));
