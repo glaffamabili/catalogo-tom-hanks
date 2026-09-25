@@ -39,3 +39,4 @@ console.log('  ✅ [Teste 3/3] Regra de segurança RBAC (403 Forbidden para não
 
 console.log('🎉 [CI Test - Catalog Service] Todos os testes passaram com sucesso!\n');
 process.exit(0);
+

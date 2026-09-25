@@ -335,7 +335,7 @@ app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   }
 });
 
-// Endpoint /health (Liveness & Readiness de Verdade)
+// Endpoint /health (Liveness & Readiness com Painel Visual & JSON)
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
   let dbStatus = 'DOWN';
@@ -353,7 +353,7 @@ app.get('/health', async (req, res) => {
 
   // 2. Testa comunicação interna com o Auth Service
   try {
-    const authRes = await fetch(`${AUTH_SERVICE_URL}/health`, { timeout: 3000 });
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/health?format=json`, { timeout: 3000 });
     if (authRes.ok) {
       authStatus = 'UP';
     } else {
@@ -365,16 +365,22 @@ app.get('/health', async (req, res) => {
 
   const isHealthy = (dbStatus === 'UP' && authStatus === 'UP');
   const responseTimeMs = Date.now() - startTime;
+  const uptimeSeconds = Math.floor(process.uptime());
+  const hours = Math.floor(uptimeSeconds / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  const seconds = uptimeSeconds % 60;
+  const uptimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
 
   const payload = {
     status: isHealthy ? 'UP' : 'DOWN',
     service: 'catalog-service',
     timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor(process.uptime()),
+    uptimeSeconds,
     responseTimeMs,
     checks: {
       database: {
         status: dbStatus,
+        host: process.env.DB_HOST || '35.226.64.52',
         ...(dbError && { error: dbError })
       },
       authService: {
@@ -385,13 +391,132 @@ app.get('/health', async (req, res) => {
     }
   };
 
-  res.status(isHealthy ? 200 : 503).json(payload);
+  // Se a requisição pedir explicitamente JSON ou for do Docker / Script
+  const wantsJson = req.query.format === 'json' || req.headers.accept?.includes('application/json') || !req.headers.accept?.includes('text/html');
+
+  if (wantsJson) {
+    return res.status(isHealthy ? 200 : 503).json(payload);
+  }
+
+  // Renderiza Dashboard Visual Moderno
+  res.status(isHealthy ? 200 : 503).send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Check & Status | Catálogo Tom Hanks</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
+    .container { width: 100%; max-width: 800px; }
+    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid #263352; padding-bottom: 20px; }
+    .title-group { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #e50914, #b91c1c); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+    h1 { font-size: 22px; font-weight: 800; }
+    .status-badge { padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status-badge.healthy { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .status-badge.unhealthy { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .pulse { width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-box { background: #0f172a; border: 1px solid #263352; border-radius: 12px; padding: 18px; }
+    .stat-label { font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+    .stat-val { font-size: 20px; font-weight: 800; color: #fff; }
+    .service-card { background: #0f172a; border: 1px solid #263352; border-radius: 12px; padding: 20px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .service-info { display: flex; align-items: center; gap: 14px; }
+    .service-icon { width: 40px; height: 40px; background: #1e293b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
+    .btn-outline:hover { color: #fff; border-color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="title-group">
+          <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+          <div>
+            <h1>Observabilidade & Health Check</h1>
+            <p style="font-size: 13px; color: #94a3b8;">Monitoramento em Tempo Real das Dependências</p>
+          </div>
+        </div>
+        <div class="status-badge ${isHealthy ? 'healthy' : 'unhealthy'}">
+          <div class="pulse"></div> ${isHealthy ? 'SISTEMA OPERACIONAL' : 'INSTABILIDADE'}
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-regular fa-clock"></i> Tempo Ativo (Uptime)</div>
+          <div class="stat-val">${uptimeFormatted}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-bolt"></i> Latência dos Checks</div>
+          <div class="stat-val">${responseTimeMs} ms</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-server"></i> Microsserviço</div>
+          <div class="stat-val" style="font-size: 16px; color: #3b82f6;">catalog-service:3000</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Diagnóstico de Dependências (Readiness)</h3>
+      
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #f59e0b;"><i class="fa-solid fa-database"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Banco de Dados MariaDB / MySQL</h4>
+            <p style="font-size: 12px; color: #64748b;">Host: ${process.env.DB_HOST || '35.226.64.52:3306'} • Consulta SELECT 1 ping</p>
+          </div>
+        </div>
+        <span class="status-badge ${dbStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${dbStatus}
+        </span>
+      </div>
+
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #3b82f6;"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Microsserviço de Autenticação (Auth Service)</h4>
+            <p style="font-size: 12px; color: #64748b;">Comunicação interna: ${AUTH_SERVICE_URL}</p>
+          </div>
+        </div>
+        <span class="status-badge ${authStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${authStatus}
+        </span>
+      </div>
+
+      <div class="actions">
+        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar Status</button>
+        <a href="/health?format=json" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Ver JSON Bruto</a>
+        <a href="/metrics" class="btn btn-outline"><i class="fa-solid fa-chart-line"></i> Ver Métricas Prometheus</a>
+        <a href="/" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Voltar ao Catálogo</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
-// Endpoint /metrics (Padrão Prometheus)
+// Endpoint /metrics (Padrão Prometheus com Painel Visual & Raw)
 app.get('/metrics', (req, res) => {
   const uptime = (Date.now() - metrics.startTime) / 1000;
   const mem = process.memoryUsage();
+  const uptimeHours = (uptime / 3600).toFixed(1);
+
+  let totalReqs = 0;
+  for (const count of Object.values(metrics.requestsTotal)) {
+    totalReqs += count;
+  }
 
   let prom = `# HELP process_uptime_seconds Process uptime in seconds\n`;
   prom += `# TYPE process_uptime_seconds gauge\n`;
@@ -420,8 +545,123 @@ app.get('/metrics', (req, res) => {
   prom += `# TYPE http_request_duration_seconds gauge\n`;
   prom += `http_request_duration_seconds ${avgDuration}\n`;
 
-  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
-  res.send(prom);
+  // Se a requisição pedir Prometheus puro (Scraper ou ?format=raw)
+  const wantsRaw = req.query.format === 'raw' || !req.headers.accept?.includes('text/html');
+  if (wantsRaw) {
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+    return res.send(prom);
+  }
+
+  // Gera linhas da tabela de tráfego
+  const routesRows = Object.entries(metrics.requestsTotal).map(([key, count]) => {
+    const [method, routePath, status] = key.split('|');
+    const isSuccess = status.startsWith('2');
+    const isWarn = status.startsWith('4');
+    const badgeColor = isSuccess ? '#10b981' : isWarn ? '#f59e0b' : '#ef4444';
+    return `<tr>
+      <td><span style="background: #1e293b; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">${method}</span></td>
+      <td style="font-weight: 600; font-family: monospace; color: #93c5fd;">${routePath}</td>
+      <td><span style="color: ${badgeColor}; font-weight: 700; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;">${status}</span></td>
+      <td style="font-weight: 700; text-align: right;">${count}</td>
+    </tr>`;
+  }).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Métricas Prometheus & Telemetria | Catálogo Tom Hanks</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
+    .container { width: 100%; max-width: 900px; margin: 0 auto; }
+    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); margin-bottom: 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid #263352; padding-bottom: 20px; }
+    .title-group { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+    h1 { font-size: 22px; font-weight: 800; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-box { background: #0f172a; border: 1px solid #263352; border-radius: 12px; padding: 18px; }
+    .stat-label { font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .stat-val { font-size: 22px; font-weight: 800; color: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th { padding: 12px 14px; background: #0f172a; color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid #263352; }
+    td { padding: 12px 14px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    tr:last-child td { border-bottom: none; }
+    pre { background: #0a0e17; border: 1px solid #263352; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto; max-height: 250px; }
+    .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
+    .btn-outline:hover { color: #fff; border-color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="title-group">
+          <div class="brand-icon"><i class="fa-solid fa-chart-line"></i></div>
+          <div>
+            <h1>Telemetria & Métricas do Sistema</h1>
+            <p style="font-size: 13px; color: #94a3b8;">Métricas no Formato Padrão Prometheus (OpenMetrics)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-arrow-pointer" style="color: #38bdf8;"></i> Total de Requisições</div>
+          <div class="stat-val">${totalReqs}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-gauge-high" style="color: #f59e0b;"></i> Latência Média</div>
+          <div class="stat-val">${(avgDuration * 1000).toFixed(1)} ms</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-memory" style="color: #a855f7;"></i> Memória Heap</div>
+          <div class="stat-val">${(mem.heapUsed / 1024 / 1024).toFixed(1)} MB</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label"><i class="fa-solid fa-microchip" style="color: #10b981;"></i> RAM Residente (RSS)</div>
+          <div class="stat-val">${(mem.rss / 1024 / 1024).toFixed(1)} MB</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Tráfego por Rota & Código de Status HTTP</h3>
+      <div style="background: #0f172a; border: 1px solid #263352; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Método</th>
+              <th>Rota / Endpoint</th>
+              <th>Status HTTP</th>
+              <th style="text-align: right;">Total de Chamadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${routesRows || '<tr><td colspan="4" style="text-align: center; padding: 18px; color: #64748b;">Nenhuma requisição registrada ainda.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Saída de Coleta do Prometheus (Raw Exporter)</h3>
+      <pre><code>${prom}</code></pre>
+
+      <div class="actions">
+        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar Métricas</button>
+        <a href="/metrics?format=raw" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Ver Formato Prometheus Puro</a>
+        <a href="/health" class="btn btn-outline"><i class="fa-solid fa-heart-pulse"></i> Ver Health Check</a>
+        <a href="/" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Voltar ao Catálogo</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
 // Documentação Swagger UI / OpenAPI

@@ -40,3 +40,4 @@ testBcrypt()
     console.error('❌ [CI Test - Auth Service] Erro nos testes:', err);
     process.exit(1);
   });
+

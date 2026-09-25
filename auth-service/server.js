@@ -298,7 +298,7 @@ app.patch('/users/:id/role', async (req, res) => {
   }
 });
 
-// Endpoint /health (Liveness & Readiness de Verdade)
+// Endpoint /health (Liveness & Readiness com Painel Visual & JSON)
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
   let dbStatus = 'DOWN';
@@ -315,25 +315,98 @@ app.get('/health', async (req, res) => {
 
   const isHealthy = (dbStatus === 'UP');
   const responseTimeMs = Date.now() - startTime;
+  const uptimeSeconds = Math.floor(process.uptime());
+  const hours = Math.floor(uptimeSeconds / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  const seconds = uptimeSeconds % 60;
+  const uptimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
 
   const payload = {
     status: isHealthy ? 'UP' : 'DOWN',
     service: 'auth-service',
     timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor(process.uptime()),
+    uptimeSeconds,
     responseTimeMs,
     checks: {
       database: {
         status: dbStatus,
+        host: process.env.DB_HOST || '35.226.64.52',
         ...(dbError && { error: dbError })
       }
     }
   };
 
-  res.status(isHealthy ? 200 : 503).json(payload);
+  const wantsJson = req.query.format === 'json' || req.headers.accept?.includes('application/json') || !req.headers.accept?.includes('text/html');
+  if (wantsJson) {
+    return res.status(isHealthy ? 200 : 503).json(payload);
+  }
+
+  res.status(isHealthy ? 200 : 503).send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Check | Auth Service</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
+    .container { width: 100%; max-width: 700px; }
+    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid #263352; padding-bottom: 20px; }
+    .title-group { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+    h1 { font-size: 22px; font-weight: 800; }
+    .status-badge { padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; }
+    .status-badge.healthy { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .status-badge.unhealthy { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .pulse { width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } }
+    .service-card { background: #0f172a; border: 1px solid #263352; border-radius: 12px; padding: 20px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="title-group">
+          <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <h1>Auth Service — Health Check</h1>
+            <p style="font-size: 13px; color: #94a3b8;">Status e Conectividade do Microsserviço de Autenticação</p>
+          </div>
+        </div>
+        <div class="status-badge ${isHealthy ? 'healthy' : 'unhealthy'}">
+          <div class="pulse"></div> ${isHealthy ? 'OPERACIONAL' : 'FALHA'}
+        </div>
+      </div>
+
+      <div class="service-card">
+        <div>
+          <h4 style="font-size: 14px; font-weight: 700;"><i class="fa-solid fa-database" style="color: #f59e0b; margin-right: 8px;"></i>Conexão MariaDB / MySQL</h4>
+          <p style="font-size: 12px; color: #64748b; margin-top: 4px;">Uptime: ${uptimeFormatted} • Latência: ${responseTimeMs}ms</p>
+        </div>
+        <span class="status-badge ${dbStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${dbStatus}
+        </span>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: 24px;">
+        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+        <a href="/health?format=json" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> JSON Bruto</a>
+        <a href="/apidocs" class="btn btn-outline"><i class="fa-solid fa-book"></i> Swagger UI</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
-// Endpoint /metrics (Padrão Prometheus)
+// Endpoint /metrics (Padrão Prometheus com Painel Visual & Raw)
 app.get('/metrics', (req, res) => {
   const uptime = (Date.now() - metrics.startTime) / 1000;
   const mem = process.memoryUsage();
@@ -365,8 +438,45 @@ app.get('/metrics', (req, res) => {
   prom += `# TYPE http_request_duration_seconds gauge\n`;
   prom += `http_request_duration_seconds ${avgDuration}\n`;
 
-  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
-  res.send(prom);
+  const wantsRaw = req.query.format === 'raw' || !req.headers.accept?.includes('text/html');
+  if (wantsRaw) {
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+    return res.send(prom);
+  }
+
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Métricas Prometheus | Auth Service</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
+    .container { width: 100%; max-width: 800px; }
+    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    pre { background: #0a0e17; border: 1px solid #263352; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto; max-height: 350px; margin-top: 16px; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;"><i class="fa-solid fa-chart-line" style="color: #3b82f6; margin-right: 10px;"></i>Métricas Auth Service</h1>
+      <p style="font-size: 13px; color: #94a3b8;">Formato OpenMetrics / Prometheus Exporter</p>
+      <pre><code>${prom}</code></pre>
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+        <a href="/metrics?format=raw" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Prometheus Raw</a>
+        <a href="/health" class="btn btn-outline"><i class="fa-solid fa-heart-pulse"></i> Health Check</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`);
 });
 
 // Documentação Swagger UI / OpenAPI

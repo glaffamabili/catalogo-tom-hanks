@@ -89,3 +89,4 @@ jobs:
         run: |
           docker compose config
           docker compose build
+
