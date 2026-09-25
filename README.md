@@ -1,91 +1,117 @@
 # 🎬 Catálogo de Filmes — Tom Hanks
-> **ISW055 · Atividade 4 · Autorização — Controle de Acesso por Papel (RBAC de Verdade)**  
-> Professor: [@siriani](https://github.com/siriani) — [github.com/siriani](https://github.com/siriani)
+> **ISW055 · Introdução à Computação em Nuvem**  
+> Professor: [@siriani](https://github.com/siriani) — [github.com/siriani](https://github.com/siriani)  
+> Aplicação em Produção: [https://amabili-flor-isw055.lapps.studio/](https://amabili-flor-isw055.lapps.studio/)
 
 ---
 
-## 🔐 1. Permissões Documentadas por Papel (RBAC)
+## 📑 Sumário das Implementações
+1. [Documentação Swagger / OpenAPI 3.0](#-1-documentação-swagger--openapi-30)
+2. [CI/CD com GitHub Actions](#-2-cicd-com-github-actions)
+3. [Observabilidade: Health Checks e Métricas Prometheus](#-3-observabilidade-health-checks-e-métricas)
+4. [Controle de Acesso por Papel (RBAC)](#-4-controle-de-acesso-por-papel-rbac)
+5. [Como Executar Localmente](#-5-como-executar-localmente)
 
-O sistema implementa o modelo **RBAC (Role-Based Access Control)** onde as permissões são associadas a papéis (*roles*) e atribuídas aos usuários no cadastro e no banco de dados.
+---
 
-| Recurso / Ação | Endpoint / Método | Papel `usuario` | Papel `admin` | Descrição & Regra de Autorização |
+## 📄 1. Documentação Swagger / OpenAPI 3.0
+
+Todos os endpoints dos serviços estão especificados e documentados sob o padrão **OpenAPI 3.0**, permitindo a visualização interativa e execução de chamadas reais com **"Try it out"** direto pelo navegador.
+
+### Links das Interfaces Swagger UI:
+- **Catálogo API (Catalog Service):** [`/apidocs`](https://amabili-flor-isw055.lapps.studio/apidocs) ou [`/docs`](https://amabili-flor-isw055.lapps.studio/docs)
+- **Arquivo da Especificação:** [`catalog-service/openapi.json`](./catalog-service/openapi.json)
+- **Auth Service API:** [`auth-service/openapi.json`](./auth-service/openapi.json) (acessível internamente em `/apidocs`)
+
+### O que está documentado em cada endpoint:
+- **Método HTTP e Rota** (ex: `POST /api/register`, `GET /api/movies`, `DELETE /api/comments/{id}`).
+- **Parâmetros e Corpo da Requisição** com schemas JSON e validações.
+- **Códigos de Resposta:** `200 OK`, `400 Bad Request`, `401 Unauthorized`, `403 Forbidden` (RBAC) e `500 Internal Server Error`.
+
+---
+
+## 🤖 2. CI/CD com GitHub Actions
+
+O repositório possui um pipeline automatizado de Integração e Entrega Contínua em [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml), acionado a cada `push` ou `pull_request` na branch `main`.
+
+### Etapas do Pipeline:
+1. **CI (Continuous Integration):**
+   - Faz checkout do código e configura Node.js 18.x com cache de dependências.
+   - Executa a suíte de testes automatizados ([`auth-service/test.js`](./auth-service/test.js) e [`catalog-service/test.js`](./catalog-service/test.js)).
+   - Valida a integridade do contrato OpenAPI 3.0, módulos e regras de autorização RBAC.
+2. **CD (Continuous Delivery & Packaging):**
+   - Configura o Docker Buildx.
+   - Gera tags rastreáveis atreladas ao commit SHA (ex: `sha-abc1234`) além da tag `latest`.
+   - Constrói as imagens Docker de `auth-service` e `catalog-service`.
+   - Valida a integridade da stack no `docker compose build`.
+
+### Gestão Segura de Segredos:
+- Nenhuma credencial (senhas de banco de dados, API keys do TMDB, credenciais SMTP) fica gravada no código, YAMLs ou Dockerfiles.
+- As variáveis são injetadas estritamente em tempo de execução através do ambiente do **Portainer** ou **GitHub Secrets**.
+
+---
+
+## 🩺 3. Observabilidade: Health Checks e Métricas
+
+### Health Checks (`/health` com Liveness & Readiness de Verdade)
+Ambos os microsserviços expõem o endpoint `/health` que realiza testes reais em suas dependências:
+- **`auth-service`:** Testa conectividade ativa executando query no banco MariaDB/MySQL.
+- **`catalog-service`:** Testa a conectividade com o banco MariaDB e a comunicação de rede interna com o `auth-service`.
+- **Status de Resposta:**
+  - `HTTP 200 OK`: Serviço saudável (`"status": "UP"`).
+  - `HTTP 503 Service Unavailable`: Falha em dependência crítica (`"status": "DOWN"`).
+
+### Monitoramento no Docker (`HEALTHCHECK`)
+Os contêineres possuem `healthcheck` configurado no [`docker-compose.yml`](./docker-compose.yml), permitindo que o Docker e o Portainer reportem o status do contêiner como `(healthy)` automaticamente via `docker ps`:
+```yaml
+healthcheck:
+  test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+  interval: 15s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+```
+
+### Métricas Prometheus (`/metrics`)
+O endpoint `/metrics` expõe métricas em formato padrão consumível pelo **Prometheus**:
+- `http_requests_total{method, path, status}`: Contagem total de requisições por rota e código de status.
+- `http_request_duration_seconds`: Latência média das requisições.
+- `process_uptime_seconds`: Tempo de atividade do processo.
+- `process_resident_memory_bytes` / `process_heap_bytes`: Consumo de memória da aplicação.
+
+---
+
+## 🔐 4. Controle de Acesso por Papel (RBAC)
+
+O sistema implementa o modelo **RBAC (Role-Based Access Control)** com enforcement centralizado no backend (Padrão A).
+
+| Recurso / Ação | Endpoint / Método | Papel `usuario` | Papel `admin` | Regra de Autorização |
 | :--- | :--- | :---: | :---: | :--- |
-| **Autenticação** | `POST /api/register`<br>`POST /api/login`<br>`POST /api/forgot-password`<br>`POST /api/reset-password` | ✅ Permitido | ✅ Permitido | Cadastro, login com hash bcrypt e recuperação de senha via e-mail. |
-| **Consultar Filmes** | `GET /api/movies` | ✅ Permitido | ✅ Permitido | Listagem de todos os filmes de Tom Hanks via API TMDB. |
-| **Favoritos** | `GET /api/favorites`<br>`POST /api/favorites` | ✅ Permitido | ✅ Permitido | Visualizar e adicionar filmes aos próprios favoritos. |
-| **Comentar em Filmes** | `POST /api/comments`<br>`GET /api/comments` | ✅ Permitido | ✅ Permitido | Criar e visualizar comentários da comunidade sobre os filmes. |
-| **Excluir o Próprio Comentário** | `DELETE /api/comments/:id` | ✅ Permitido | ✅ Permitido | O usuário pode excluir apenas comentários criados por ele mesmo (`usuario_id == session.userId`). |
-| **Moderação de Comentários (Qualquer Autor)** | `DELETE /api/comments/:id` | ❌ **Negado (403 Forbidden)** | ✅ Permitido | **Ação Exclusiva:** Administrador pode moderar e excluir comentários de qualquer usuário. |
-| **Listar Todos os Usuários** | `GET /api/users` | ❌ **Negado (403 Forbidden)** | ✅ Permitido | **Ação Exclusiva:** Apenas administradores podem visualizar a lista completa de usuários cadastrados. |
-| **Promover / Rebaixar Papel de Usuário** | `PATCH /api/users/:id/role` | ❌ **Negado (403 Forbidden)** | ✅ Permitido | **Ação Exclusiva:** Apenas administradores podem alterar o papel de um usuário entre `usuario` e `admin`. |
+| **Autenticação** | `/api/register`<br>`/api/login`<br>`/api/forgot-password` | ✅ Permitido | ✅ Permitido | Login, cadastro e recuperação de senha. |
+| **Catálogo de Filmes** | `GET /api/movies` | ✅ Permitido | ✅ Permitido | Listagem de filmes via TMDB API. |
+| **Favoritos** | `GET /api/favorites`<br>`POST /api/favorites` | ✅ Permitido | ✅ Permitido | Gerenciar filmes favoritos próprios. |
+| **Comentar em Filmes** | `POST /api/comments`<br>`GET /api/comments` | ✅ Permitido | ✅ Permitido | Postar e visualizar comentários da comunidade. |
+| **Excluir Próprio Comentário** | `DELETE /api/comments/:id` | ✅ Permitido | ✅ Permitido | O usuário pode excluir apenas seu próprio comentário. |
+| **Moderação de Comentários** | `DELETE /api/comments/:id` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Administrador pode moderar/excluir qualquer comentário. |
+| **Listar Todos os Usuários** | `GET /api/users` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Painel restrito a administradores. |
+| **Alterar Papel de Usuário** | `PATCH /api/users/:id/role` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Promover/rebaixar papéis no sistema. |
 
 ---
 
-## 🛡️ 2. Ações Exclusivas de Administrador e Enforcement no Backend
-
-A validação de autorização é executada **estritamente no servidor (backend)**, garantindo segurança mesmo se a requisição for disparada diretamente via Postman, cURL ou console de desenvolvedor.
-
-### Regra de Exclusão de Comentários (`DELETE /api/comments/:id`)
-1. O backend busca o comentário no banco de dados MySQL.
-2. Consulta o `auth-service` em tempo real para verificar o papel do usuário autenticado.
-3. **Decisão do Servidor**:
-   - Se for o autor do comentário (`comment.usuario_id === req.session.userId`): **Permitido (200 OK)**.
-   - Se for Administrador (`user.role === 'admin'`): **Permitido (200 OK - Moderação)**.
-   - Se for outro usuário comum (`user.role === 'usuario'` e não é o dono): **Recusado com HTTP `403 Forbidden`** e mensagem explicativa.
-
----
-
-## 🧪 3. Demonstração Prática (Cenários de Teste)
-
-### Cenário 1: Usuário Comum tentando ação exclusiva
-- **Usuário:** `Maria Silva` (`role: usuario`).
-- **Ação:** Tenta excluir o comentário de outro usuário (`ID #10`).
-- **Resultado:** O servidor recusa com **Status HTTP `403 Forbidden`**:
-  ```json
-  {
-    "error": "Acesso negado (403 Forbidden): Apenas o autor do comentário ou um administrador podem excluir este comentário."
-  }
-  ```
-
-### Cenário 2: Administrador executando moderação
-- **Usuário:** `Admin Central` (`role: admin`).
-- **Ação:** Executa a exclusão do mesmo comentário (`ID #10`).
-- **Resultado:** O servidor valida o papel e executa a exclusão com sucesso **Status HTTP `200 OK`**:
-  ```json
-  {
-    "success": true,
-    "message": "Comentário moderado e excluído com sucesso (Ação de Administrador)."
-  }
-  ```
-
----
-
-## 📐 4. Arquitetura: Padrão A ou Padrão B?
-
-### Qual padrão este projeto utiliza hoje?
-> **O projeto utiliza o PADRÃO A — Enforcement Centralizado.**
-
-### Como funciona hoje (Padrão A):
-A cada requisição sensível que exige checagem de permissão (por exemplo, na rota `DELETE /api/comments/:id` ou no middleware `exigeAdmin`), o `catalog-service` realiza uma chamada HTTP interna de rede para o `auth-service` (`GET /verify-user/:id`) para consultar o papel mais recente do usuário no banco de dados.
-
-- **Vantagem:** Efeito imediato. Se um usuário for promovido ou rebaixado no banco de dados, sua nova permissão passa a valer na mesma hora para todas as próximas requisições.
-- **Desvantagem:** Custo adicional de latência de rede (ida-e-volta ao `auth-service`) a cada ação protegida.
-
-### O que mudaria se fosse para o Padrão B (Claims no JWT)?
-1. **Sem chamada de rede extra:** Ao fazer login, o `auth-service` emitiria um token assinado (JWT) contendo o campo `role` nos *claims* (payload).
-2. **Decisão autônoma do serviço:** O `catalog-service` apenas verificaria a assinatura criptográfica do token localmente com uma chave pública/secreta e leria o papel do usuário diretamente do token, **sem precisar fazer chamadas de rede para o `auth-service`**.
-3. **Trade-off:** Mais rápido e desacoplado, porém se o papel do usuário for alterado ou revogado no banco de dados, a mudança só surtirá efeito quando o token atual expirar e for renovado.
-
----
-
-## 🚀 Como Executar o Projeto
+## 🚀 5. Como Executar Localmente
 
 ```bash
 # 1. Clonar o repositório
 git clone https://github.com/glaffamabili/catalogo-tom-hanks.git
 cd catalogo-tom-hanks
 
-# 2. Subir a stack com Docker Compose
-docker-compose up -d --build
+# 2. Executar testes automatizados
+cd auth-service && npm test && cd ../catalog-service && npm test && cd ..
+
+# 3. Subir os serviços com Docker Compose
+docker compose up -d --build
 ```
-Acesse no navegador: `http://localhost:8200` (ou na porta configurada no seu Portainer / VPS).
+- Aplicação Web: `http://localhost:8200`
+- Swagger UI: `http://localhost:8200/apidocs`
+- Health Check: `http://localhost:8200/health`
+- Métricas: `http://localhost:8200/metrics`

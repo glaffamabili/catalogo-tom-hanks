@@ -3,9 +3,30 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
+
+// Métricas em memória para o endpoint /metrics (Padrão Prometheus)
+const metrics = {
+  requestsTotal: {},
+  requestDurations: [],
+  startTime: Date.now()
+};
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const route = req.route ? req.route.path : req.path;
+    const key = `${req.method}|${route}|${res.statusCode}`;
+    metrics.requestsTotal[key] = (metrics.requestsTotal[key] || 0) + 1;
+    metrics.requestDurations.push(duration);
+    if (metrics.requestDurations.length > 500) metrics.requestDurations.shift();
+  });
+  next();
+});
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -275,6 +296,118 @@ app.patch('/users/:id/role', async (req, res) => {
     console.error('Erro ao atualizar papel:', err);
     res.status(500).json({ error: 'Erro ao atualizar papel do usuário.' });
   }
+});
+
+// Endpoint /health (Liveness & Readiness de Verdade)
+app.get('/health', async (req, res) => {
+  const startTime = Date.now();
+  let dbStatus = 'DOWN';
+  let dbError = null;
+
+  try {
+    const [rows] = await pool.query('SELECT 1 AS alive');
+    if (rows && rows.length > 0) {
+      dbStatus = 'UP';
+    }
+  } catch (err) {
+    dbError = err.message;
+  }
+
+  const isHealthy = (dbStatus === 'UP');
+  const responseTimeMs = Date.now() - startTime;
+
+  const payload = {
+    status: isHealthy ? 'UP' : 'DOWN',
+    service: 'auth-service',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    responseTimeMs,
+    checks: {
+      database: {
+        status: dbStatus,
+        ...(dbError && { error: dbError })
+      }
+    }
+  };
+
+  res.status(isHealthy ? 200 : 503).json(payload);
+});
+
+// Endpoint /metrics (Padrão Prometheus)
+app.get('/metrics', (req, res) => {
+  const uptime = (Date.now() - metrics.startTime) / 1000;
+  const mem = process.memoryUsage();
+
+  let prom = `# HELP process_uptime_seconds Process uptime in seconds\n`;
+  prom += `# TYPE process_uptime_seconds gauge\n`;
+  prom += `process_uptime_seconds ${uptime.toFixed(2)}\n\n`;
+
+  prom += `# HELP process_resident_memory_bytes Resident memory size in bytes\n`;
+  prom += `# TYPE process_resident_memory_bytes gauge\n`;
+  prom += `process_resident_memory_bytes ${mem.rss}\n\n`;
+
+  prom += `# HELP process_heap_bytes Process heap bytes\n`;
+  prom += `# TYPE process_heap_bytes gauge\n`;
+  prom += `process_heap_bytes ${mem.heapUsed}\n\n`;
+
+  prom += `# HELP http_requests_total Total number of HTTP requests\n`;
+  prom += `# TYPE http_requests_total counter\n`;
+  for (const [key, count] of Object.entries(metrics.requestsTotal)) {
+    const [method, routePath, status] = key.split('|');
+    prom += `http_requests_total{method="${method}",path="${routePath}",status="${status}"} ${count}\n`;
+  }
+
+  const avgDuration = metrics.requestDurations.length > 0
+    ? (metrics.requestDurations.reduce((a, b) => a + b, 0) / metrics.requestDurations.length).toFixed(4)
+    : 0;
+
+  prom += `\n# HELP http_request_duration_seconds Average HTTP request duration in seconds\n`;
+  prom += `# TYPE http_request_duration_seconds gauge\n`;
+  prom += `http_request_duration_seconds ${avgDuration}\n`;
+
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+  res.send(prom);
+});
+
+// Documentação Swagger UI / OpenAPI
+const openapiPath = path.join(__dirname, 'openapi.json');
+app.get('/openapi.json', (req, res) => {
+  res.sendFile(openapiPath);
+});
+
+app.get(['/apidocs', '/docs'], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Swagger UI — Auth Service API</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css" />
+  <style>
+    body { margin: 0; background: #fafafa; font-family: sans-serif; }
+    .swagger-ui .topbar { background-color: #0b0f19; }
+    .swagger-ui .topbar-wrapper .link { color: #e50914; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout"
+      });
+    };
+  </script>
+</body>
+</html>`);
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1116,15 +1116,27 @@
           <span>Tom</span>Hanks Movies
         </a>
 
-        <div class="user-profile">
-          <div class="user-badge">
-            <div class="user-avatar" id="user-avatar-char">U</div>
-            <span id="user-display">Carregando...</span>
-            <span class="role-tag" id="role-display">USUÁRIO</span>
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+          <a href="/apidocs" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+            <i class="fa-solid fa-book" style="color: #10b981;"></i> Swagger API
+          </a>
+          <a href="/health" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+            <i class="fa-solid fa-heart-pulse" style="color: #ef4444;"></i> Health
+          </a>
+          <a href="/metrics" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+            <i class="fa-solid fa-chart-line" style="color: #3b82f6;"></i> Metrics
+          </a>
+
+          <div class="user-profile">
+            <div class="user-badge">
+              <div class="user-avatar" id="user-avatar-char">U</div>
+              <span id="user-display">Carregando...</span>
+              <span class="role-tag" id="role-display">USUÁRIO</span>
+            </div>
+            <button onclick="logout()" class="btn-logout">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
+            </button>
           </div>
-          <button onclick="logout()" class="btn-logout">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
-          </button>
         </div>
       </div>
     </nav>

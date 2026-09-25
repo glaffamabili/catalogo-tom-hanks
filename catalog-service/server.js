@@ -2,9 +2,31 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cookieSession = require('cookie-session');
 const fetch = require('node-fetch');
+const path = require('path');
 
 const app = express();
 app.set('trust proxy', 1);
+
+// Métricas em memória para o endpoint /metrics (Padrão Prometheus)
+const metrics = {
+  requestsTotal: {},
+  requestDurations: [],
+  startTime: Date.now()
+};
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const route = req.route ? req.route.path : req.path;
+    const key = `${req.method}|${route}|${res.statusCode}`;
+    metrics.requestsTotal[key] = (metrics.requestsTotal[key] || 0) + 1;
+    metrics.requestDurations.push(duration);
+    if (metrics.requestDurations.length > 500) metrics.requestDurations.shift();
+  });
+  next();
+});
+
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -311,6 +333,136 @@ app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar papel do usuário no Auth Service.' });
   }
+});
+
+// Endpoint /health (Liveness & Readiness de Verdade)
+app.get('/health', async (req, res) => {
+  const startTime = Date.now();
+  let dbStatus = 'DOWN';
+  let dbError = null;
+  let authStatus = 'DOWN';
+  let authError = null;
+
+  // 1. Testa conectividade com MariaDB / MySQL
+  try {
+    const [rows] = await pool.query('SELECT 1 AS alive');
+    if (rows && rows.length > 0) dbStatus = 'UP';
+  } catch (err) {
+    dbError = err.message;
+  }
+
+  // 2. Testa comunicação interna com o Auth Service
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/health`, { timeout: 3000 });
+    if (authRes.ok) {
+      authStatus = 'UP';
+    } else {
+      authError = `Auth Service respondeu com status ${authRes.status}`;
+    }
+  } catch (err) {
+    authError = err.message;
+  }
+
+  const isHealthy = (dbStatus === 'UP' && authStatus === 'UP');
+  const responseTimeMs = Date.now() - startTime;
+
+  const payload = {
+    status: isHealthy ? 'UP' : 'DOWN',
+    service: 'catalog-service',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    responseTimeMs,
+    checks: {
+      database: {
+        status: dbStatus,
+        ...(dbError && { error: dbError })
+      },
+      authService: {
+        status: authStatus,
+        url: AUTH_SERVICE_URL,
+        ...(authError && { error: authError })
+      }
+    }
+  };
+
+  res.status(isHealthy ? 200 : 503).json(payload);
+});
+
+// Endpoint /metrics (Padrão Prometheus)
+app.get('/metrics', (req, res) => {
+  const uptime = (Date.now() - metrics.startTime) / 1000;
+  const mem = process.memoryUsage();
+
+  let prom = `# HELP process_uptime_seconds Process uptime in seconds\n`;
+  prom += `# TYPE process_uptime_seconds gauge\n`;
+  prom += `process_uptime_seconds ${uptime.toFixed(2)}\n\n`;
+
+  prom += `# HELP process_resident_memory_bytes Resident memory size in bytes\n`;
+  prom += `# TYPE process_resident_memory_bytes gauge\n`;
+  prom += `process_resident_memory_bytes ${mem.rss}\n\n`;
+
+  prom += `# HELP process_heap_bytes Process heap bytes\n`;
+  prom += `# TYPE process_heap_bytes gauge\n`;
+  prom += `process_heap_bytes ${mem.heapUsed}\n\n`;
+
+  prom += `# HELP http_requests_total Total number of HTTP requests\n`;
+  prom += `# TYPE http_requests_total counter\n`;
+  for (const [key, count] of Object.entries(metrics.requestsTotal)) {
+    const [method, routePath, status] = key.split('|');
+    prom += `http_requests_total{method="${method}",path="${routePath}",status="${status}"} ${count}\n`;
+  }
+
+  const avgDuration = metrics.requestDurations.length > 0
+    ? (metrics.requestDurations.reduce((a, b) => a + b, 0) / metrics.requestDurations.length).toFixed(4)
+    : 0;
+
+  prom += `\n# HELP http_request_duration_seconds Average HTTP request duration in seconds\n`;
+  prom += `# TYPE http_request_duration_seconds gauge\n`;
+  prom += `http_request_duration_seconds ${avgDuration}\n`;
+
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+  res.send(prom);
+});
+
+// Documentação Swagger UI / OpenAPI
+const openapiPath = path.join(__dirname, 'openapi.json');
+app.get('/openapi.json', (req, res) => {
+  res.sendFile(openapiPath);
+});
+
+app.get(['/apidocs', '/docs'], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Swagger UI — Catalog Service API</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css" />
+  <style>
+    body { margin: 0; background: #fafafa; font-family: sans-serif; }
+    .swagger-ui .topbar { background-color: #0b0f19; }
+    .swagger-ui .topbar-wrapper .link { color: #e50914; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout"
+      });
+    };
+  </script>
+</body>
+</html>`);
 });
 
 const PORT = process.env.PORT || 3000;

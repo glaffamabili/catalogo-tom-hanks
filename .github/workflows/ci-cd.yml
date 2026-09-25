@@ -1,0 +1,91 @@
+name: CI/CD Pipeline — Build, Test & Package
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 1. Pipeline de Integração Contínua (CI): Testes Automatizados e Validação
+  test:
+    name: 🧪 Automated Tests & Contract Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: |
+            auth-service/package.json
+            catalog-service/package.json
+
+      - name: 📦 Instalar Dependências — Auth Service
+        run: |
+          cd auth-service
+          npm install
+
+      - name: 🧪 Executar Testes Automatizados — Auth Service
+        run: |
+          cd auth-service
+          npm test
+
+      - name: 📦 Instalar Dependências — Catalog Service
+        run: |
+          cd catalog-service
+          npm install
+
+      - name: 🧪 Executar Testes Automatizados — Catalog Service
+        run: |
+          cd catalog-service
+          npm test
+
+  # 2. Pipeline de Entrega Contínua (CD): Build das Imagens Docker e Tagging Rastreável
+  docker-build:
+    name: 🐳 Docker Build & Tagging Rastreável
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: 📥 Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: 🏷️ Gerar Tags Rastreáveis do Commit (SHA)
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_tag=sha-$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: 🔨 Build da Imagem — Auth Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          push: false
+          tags: |
+            auth-service:${{ steps.meta.outputs.commit_tag }}
+            auth-service:latest
+
+      - name: 🔨 Build da Imagem — Catalog Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./catalog-service
+          file: ./catalog-service/Dockerfile
+          push: false
+          tags: |
+            catalog-service:${{ steps.meta.outputs.commit_tag }}
+            catalog-service:latest
+
+      - name: 🚀 Validar Build do Docker Compose
+        run: |
+          docker compose config
+          docker compose build

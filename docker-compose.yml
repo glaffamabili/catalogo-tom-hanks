@@ -21,6 +21,12 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - APP_URL=${APP_URL}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   catalog-service:
     build:
@@ -38,3 +44,12 @@ services:
       - TMDB_API_KEY=${TMDB_API_KEY}
       - AUTH_SERVICE_URL=http://auth-service:3000
       - APP_URL=${APP_URL}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      auth-service:
+        condition: service_healthy
