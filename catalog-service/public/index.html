@@ -464,24 +464,6 @@
       box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
     }
 
-    .app-tab-btn.admin-tab {
-      border-color: rgba(245, 158, 11, 0.4);
-      color: var(--accent-gold);
-    }
-
-    .app-tab-btn.admin-tab:hover {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: var(--accent-gold);
-      color: #fff;
-    }
-
-    .app-tab-btn.admin-tab.active {
-      background: linear-gradient(135deg, #d97706, #b45309) !important;
-      border-color: #f59e0b !important;
-      color: #fff !important;
-      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35) !important;
-    }
-
     .search-bar-wrapper {
       max-width: 500px;
       margin: 0 auto 30px;
@@ -1065,6 +1047,7 @@
   <div id="toast-container"></div>
 
   <!-- MODAL: RECUPERAÇÃO DE SENHA -->
+  <!-- MODAL: RECUPERAÇÃO DE SENHA -->
   <div id="forgot-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <button class="modal-close" onclick="fecharModal('forgot-modal')"><i class="fa-solid fa-xmark"></i></button>
@@ -1081,62 +1064,6 @@
       </div>
       <button id="btn-forgot-send" class="btn btn-primary" onclick="enviarRecuperacao()">
         <i class="fa-solid fa-paper-plane"></i> Enviar Link de Recuperação
-      </button>
-    </div>
-  </div>
-
-  <!-- MODAL: ATIVAÇÃO DE CONTA (Validação de E-mail Real com Código de 6 Dígitos) -->
-  <div id="verify-email-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <button class="modal-close" onclick="fecharModal('verify-email-modal')"><i class="fa-solid fa-xmark"></i></button>
-      <div style="text-align: center; margin-bottom: 16px;">
-        <div class="brand-icon" style="background: linear-gradient(135deg, var(--accent-green), #059669);"><i class="fa-solid fa-envelope-circle-check"></i></div>
-        <h3 style="font-size: 20px; font-weight: 800;">Ativação de Conta</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
-          Enviamos um código de segurança de 6 dígitos para o e-mail:<br>
-          <strong id="verify-email-target" style="color: #38bdf8;"></strong>
-        </p>
-      </div>
-
-      <div class="form-group">
-        <label style="text-align: center;">Código de 6 Dígitos</label>
-        <input type="text" id="verify-email-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
-      </div>
-
-      <button id="btn-confirm-verify-email" class="btn btn-success" onclick="confirmarAtivacaoEmail()">
-        <i class="fa-solid fa-circle-check"></i> Validar E-mail e Ativar Conta
-      </button>
-
-      <button class="btn btn-outline" style="margin-top: 8px;" onclick="solicitarReenvioCodigo('EMAIL_VERIFICACAO')">
-        <i class="fa-solid fa-rotate-right"></i> Reenviar Código
-      </button>
-    </div>
-  </div>
-
-  <!-- MODAL: VERIFICAÇÃO EM DUAS ETAPAS (2FA Login OTP) -->
-  <div id="twofa-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <button class="modal-close" onclick="fecharModal('twofa-modal')"><i class="fa-solid fa-xmark"></i></button>
-      <div style="text-align: center; margin-bottom: 16px;">
-        <div class="brand-icon" style="background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);"><i class="fa-solid fa-shield-halved"></i></div>
-        <h3 style="font-size: 20px; font-weight: 800;">Verificação em Duas Etapas</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
-          Para garantir a sua privacidade e segurança, digite o código de 6 dígitos enviado para:<br>
-          <strong id="twofa-email-target" style="color: #93c5fd;"></strong>
-        </p>
-      </div>
-
-      <div class="form-group">
-        <label style="text-align: center;">Código de 6 Dígitos (2FA)</label>
-        <input type="text" id="twofa-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
-      </div>
-
-      <button id="btn-confirm-2fa" class="btn btn-blue" onclick="confirmar2FA()">
-        <i class="fa-solid fa-lock-open"></i> Confirmar e Acessar
-      </button>
-
-      <button class="btn btn-outline" style="margin-top: 8px;" onclick="solicitarReenvioCodigo('LOGIN_2FA')">
-        <i class="fa-solid fa-rotate-right"></i> Reenviar Código de 2 Etapas
       </button>
     </div>
   </div>
@@ -1169,12 +1096,12 @@
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Rede Social & Catálogo de Cinema</p>
       </div>
 
-      <div class="auth-tabs">
+      <div id="auth-tabs-container" class="auth-tabs">
         <button id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
         <button id="tab-register" class="auth-tab" onclick="switchAuthTab('register')">Criar Conta</button>
       </div>
 
-      <!-- Formulário de Login -->
+      <!-- 1. Formulário de Login (Etapa 1) -->
       <form id="login-form" onsubmit="event.preventDefault(); login();">
         <div class="form-group">
           <label>E-mail</label>
@@ -1201,7 +1128,7 @@
         </button>
       </form>
 
-      <!-- Formulário de Cadastro com Validação de E-mail Real -->
+      <!-- 2. Formulário de Cadastro com Validação de E-mail Real -->
       <form id="register-form" class="hidden" onsubmit="event.preventDefault(); cadastrar();">
         <div class="form-group">
           <label>Nome Completo</label>
@@ -1242,6 +1169,74 @@
           <i class="fa-solid fa-user-plus"></i> Validar E-mail e Criar Conta
         </button>
       </form>
+
+      <!-- 3. TELA DEDICADA: VERIFICAÇÃO EM DUAS ETAPAS (2FA OTP) -->
+      <div id="auth-2fa-step" class="hidden">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="width: 52px; height: 52px; background: linear-gradient(135deg, var(--accent-blue), #1d4ed8); border-radius: 12px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35);">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3 style="font-size: 20px; font-weight: 800; color: #fff;">Verificação em Duas Etapas</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+            Enviamos um código de segurança de 6 dígitos para:<br>
+            <strong id="auth-2fa-email-display" style="color: #38bdf8; font-size: 14px; word-break: break-all;"></strong>
+          </p>
+        </div>
+
+        <form onsubmit="event.preventDefault(); confirmar2FA();">
+          <div class="form-group">
+            <label style="text-align: center; display: block; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">Código de 6 Dígitos (2FA)</label>
+            <input type="text" id="twofa-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code" required>
+          </div>
+
+          <button type="submit" id="btn-confirm-2fa" class="btn btn-blue" style="background: var(--accent-blue); color: #fff; font-weight: 700; width: 100%;">
+            <i class="fa-solid fa-lock-open"></i> Validar e Acessar Minha Conta
+          </button>
+
+          <div style="display: flex; gap: 10px; margin-top: 14px;">
+            <button type="button" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px; margin-top: 0;" onclick="solicitarReenvioCodigo('LOGIN_2FA')">
+              <i class="fa-solid fa-rotate-right"></i> Reenviar Código
+            </button>
+            <button type="button" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px; margin-top: 0;" onclick="voltarParaLogin()">
+              <i class="fa-solid fa-arrow-left"></i> Voltar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 4. TELA DEDICADA: ATIVAÇÃO DE CONTA (Validação de E-mail Real) -->
+      <div id="auth-verify-email-step" class="hidden">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="width: 52px; height: 52px; background: linear-gradient(135deg, var(--accent-green), #059669); border-radius: 12px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+            <i class="fa-solid fa-envelope-circle-check"></i>
+          </div>
+          <h3 style="font-size: 20px; font-weight: 800; color: #fff;">Ativação de Conta</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+            Digite o código de 6 dígitos que enviamos para:<br>
+            <strong id="auth-verify-email-display" style="color: #38bdf8; font-size: 14px; word-break: break-all;"></strong>
+          </p>
+        </div>
+
+        <form onsubmit="event.preventDefault(); confirmarAtivacaoEmail();">
+          <div class="form-group">
+            <label style="text-align: center; display: block; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">Código de Ativação (6 Dígitos)</label>
+            <input type="text" id="verify-email-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code" required>
+          </div>
+
+          <button type="submit" id="btn-confirm-verify-email" class="btn btn-success" style="background: var(--accent-green); color: #fff; font-weight: 700; width: 100%;">
+            <i class="fa-solid fa-circle-check"></i> Validar E-mail e Ativar Conta
+          </button>
+
+          <div style="display: flex; gap: 10px; margin-top: 14px;">
+            <button type="button" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px; margin-top: 0;" onclick="solicitarReenvioCodigo('EMAIL_VERIFICACAO')">
+              <i class="fa-solid fa-rotate-right"></i> Reenviar Código
+            </button>
+            <button type="button" class="btn btn-outline" style="flex: 1; font-size: 12px; padding: 10px; margin-top: 0;" onclick="voltarParaLogin()">
+              <i class="fa-solid fa-arrow-left"></i> Voltar
+            </button>
+          </div>
+        </form>
+      </div>
 
       <div id="auth-msg" class="auth-error"></div>
     </div>
@@ -1301,8 +1296,8 @@
           <button id="tab-btn-comentarios" class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
             <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comunidade (<span id="total-comms-badge">0</span>)
           </button>
-          <button id="tab-btn-admin" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('admin', this)">
-            <i class="fa-solid fa-shield-halved"></i> Painel Admin (<span id="total-users-badge">0</span>)
+          <button id="tab-btn-admin" class="app-tab-btn hidden" onclick="mostrarSecao('admin', this)">
+            <i class="fa-solid fa-shield-halved" style="color: var(--accent-gold);"></i> Painel Admin (<span id="total-users-badge">0</span>)
           </button>
         </div>
 
@@ -1340,12 +1335,6 @@
                   <i class="fa-solid fa-camera"></i> Alterar Foto (MinIO)
                 </label>
                 <input type="file" id="avatar-file-input" accept="image/*" class="hidden" onchange="fazerUploadFotoPerfil(event)">
-                <button id="profile-admin-btn" class="btn btn-outline hidden" style="width: auto; padding: 6px 12px; font-size: 12px; border-color: rgba(245, 158, 11, 0.4); color: var(--accent-gold); display: inline-flex;" onclick="mostrarSecao('admin')">
-                  <i class="fa-solid fa-shield-halved"></i> Painel Admin
-                </button>
-                <button id="profile-elevate-btn" class="btn btn-outline hidden" style="width: auto; padding: 6px 12px; font-size: 12px; border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; display: inline-flex;" onclick="ativarModoAdmin()">
-                  <i class="fa-solid fa-crown"></i> Ativar Modo Admin
-                </button>
               </div>
 
               <!-- E-mail Real do Usuário (Atende solicitação do usuário) -->
@@ -1479,7 +1468,12 @@
 
     function switchAuthTab(tab) {
       document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
-      document.getElementById('auth-msg').style.display = 'none';
+      const authMsg = document.getElementById('auth-msg');
+      if (authMsg) authMsg.style.display = 'none';
+
+      document.getElementById('auth-tabs-container').classList.remove('hidden');
+      document.getElementById('auth-2fa-step').classList.add('hidden');
+      document.getElementById('auth-verify-email-step').classList.add('hidden');
 
       if (tab === 'login') {
         document.getElementById('tab-login').classList.add('active');
@@ -1490,6 +1484,52 @@
         document.getElementById('login-form').classList.add('hidden');
         document.getElementById('register-form').classList.remove('hidden');
       }
+    }
+
+    // Exibir Tela Dedicada de Verificação 2FA
+    function exibirEtapa2FA(email) {
+      pendenteEmailAuth = email;
+      document.getElementById('auth-tabs-container').classList.add('hidden');
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('auth-verify-email-step').classList.add('hidden');
+      
+      const step2fa = document.getElementById('auth-2fa-step');
+      step2fa.classList.remove('hidden');
+      document.getElementById('auth-2fa-email-display').innerText = email;
+      
+      const input = document.getElementById('twofa-code');
+      input.value = '';
+      setTimeout(() => input.focus(), 150);
+      
+      showToast('Código de 2 etapas enviado para seu e-mail! 🔐', 'info');
+    }
+
+    // Exibir Tela Dedicada de Ativação de Conta (E-mail Real)
+    function exibirEtapaAtivacaoEmail(email) {
+      pendenteEmailAuth = email;
+      document.getElementById('auth-tabs-container').classList.add('hidden');
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('auth-2fa-step').classList.add('hidden');
+      
+      const stepVerif = document.getElementById('auth-verify-email-step');
+      stepVerif.classList.remove('hidden');
+      document.getElementById('auth-verify-email-display').innerText = email;
+      
+      const input = document.getElementById('verify-email-code');
+      input.value = '';
+      setTimeout(() => input.focus(), 150);
+
+      showToast('Código de ativação enviado para seu e-mail! 📩', 'info');
+    }
+
+    // Voltar para a tela de Login
+    function voltarParaLogin() {
+      document.getElementById('auth-tabs-container').classList.remove('hidden');
+      document.getElementById('auth-2fa-step').classList.add('hidden');
+      document.getElementById('auth-verify-email-step').classList.add('hidden');
+      switchAuthTab('login');
     }
 
     // ==========================================
@@ -1503,7 +1543,7 @@
 
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando credenciais...';
       btn.disabled = true;
-      authMsg.style.display = 'none';
+      if (authMsg) authMsg.style.display = 'none';
 
       try {
         const res = await fetch('/api/login', {
@@ -1515,24 +1555,15 @@
 
         if (res.ok) {
           if (data.require2FA) {
-            // Abre Modal de 2FA
-            pendenteEmailAuth = data.email || email;
-            document.getElementById('twofa-email-target').innerText = pendenteEmailAuth;
-            document.getElementById('twofa-code').value = '';
-            abrirModal('twofa-modal');
-            document.getElementById('twofa-code').focus();
-            showToast('Código de 2 etapas enviado para seu e-mail!', 'info');
+            // Exibe a tela de Verificação em Duas Etapas (2FA)
+            exibirEtapa2FA(data.email || email);
           } else {
             showToast(`Bem-vindo(a), ${data.nome}!`, 'success');
             carregarDados();
           }
         } else if (data.requireVerification) {
           // Conta pendente de ativação de e-mail
-          pendenteEmailAuth = data.email || email;
-          document.getElementById('verify-email-target').innerText = pendenteEmailAuth;
-          document.getElementById('verify-email-code').value = '';
-          abrirModal('verify-email-modal');
-          showToast(data.error || 'Digite o código enviado para ativar sua conta.', 'info');
+          exibirEtapaAtivacaoEmail(data.email || email);
         } else {
           authMsg.innerText = data.error || 'Credenciais inválidas.';
           authMsg.style.display = 'block';
@@ -1566,16 +1597,16 @@
         const data = await res.json();
 
         if (res.ok) {
-          fecharModal('twofa-modal');
+          voltarParaLogin();
           showToast(`Autenticação em 2 etapas confirmada com sucesso! Bem-vindo(a), ${data.nome}! 🎉`, 'success');
           carregarDados();
         } else {
-          showToast(data.error || 'Código de 2 etapas inválido ou expirado.', 'error');
+          showToast(data.error || 'Código de 2 etapas incorreto ou expirado.', 'error');
         }
       } catch (err) {
         showToast('Erro ao validar código em duas etapas.', 'error');
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Confirmar e Acessar';
+        btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Validar e Acessar Minha Conta';
         btn.disabled = false;
       }
     }
@@ -1593,7 +1624,7 @@
 
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando e-mail real...';
       btn.disabled = true;
-      authMsg.style.display = 'none';
+      if (authMsg) authMsg.style.display = 'none';
 
       try {
         const res = await fetch('/api/register', {
@@ -1604,11 +1635,7 @@
         const data = await res.json();
 
         if (res.ok) {
-          pendenteEmailAuth = data.email || email;
-          document.getElementById('verify-email-target').innerText = pendenteEmailAuth;
-          document.getElementById('verify-email-code').value = '';
-          abrirModal('verify-email-modal');
-          showToast('Código de ativação enviado para seu e-mail! 📩', 'success');
+          exibirEtapaAtivacaoEmail(data.email || email);
         } else {
           authMsg.innerText = data.error || 'Erro ao realizar cadastro.';
           authMsg.style.display = 'block';
@@ -1642,9 +1669,8 @@
         const data = await res.json();
 
         if (res.ok) {
-          fecharModal('verify-email-modal');
           showToast('Conta ativada com sucesso! Faça seu login para continuar. 🎉', 'success');
-          switchAuthTab('login');
+          voltarParaLogin();
           document.getElementById('login-email').value = pendenteEmailAuth;
         } else {
           showToast(data.error || 'Código de ativação incorreto.', 'error');
@@ -1740,18 +1766,11 @@
 
         // Se for admin, exibe aba de administração
         const adminTab = document.getElementById('tab-btn-admin');
-        const profileAdminBtn = document.getElementById('profile-admin-btn');
-        const profileElevateBtn = document.getElementById('profile-elevate-btn');
-
         if (usuarioAtual.role === 'admin') {
           adminTab.classList.remove('hidden');
-          if (profileAdminBtn) profileAdminBtn.classList.remove('hidden');
-          if (profileElevateBtn) profileElevateBtn.classList.add('hidden');
           carregarContadorUsuarios();
         } else {
           adminTab.classList.add('hidden');
-          if (profileAdminBtn) profileAdminBtn.classList.add('hidden');
-          if (profileElevateBtn) profileElevateBtn.classList.remove('hidden');
         }
 
         await carregarFavoritos();
@@ -1764,29 +1783,10 @@
       }
     }
 
-    // Ativação de Administrador (Recovery / Self-Promotion)
-    async function ativarModoAdmin() {
-      if (!confirm('Deseja ativar privilégios de Administrador para sua conta?')) return;
-      try {
-        const res = await fetch('/api/me/elevate-admin', { method: 'POST' });
-        const data = await res.json();
-        if (res.ok) {
-          showToast(data.message || 'Promovido a Administrador com sucesso! 👑', 'success');
-          await carregarDados();
-          mostrarSecao('admin');
-        } else {
-          showToast(data.error || 'Erro ao ativar modo administrador.', 'error');
-        }
-      } catch (err) {
-        showToast('Erro de comunicação ao ativar modo administrador.', 'error');
-      }
-    }
-
     // Navegação entre Abas
     function mostrarSecao(secao, btn) {
       document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
-      const targetBtn = btn || document.getElementById(`tab-btn-${secao}`);
-      if (targetBtn) targetBtn.classList.add('active');
+      if (btn) btn.classList.add('active');
 
       document.getElementById('tab-content-todos').classList.add('hidden');
       document.getElementById('tab-content-perfil').classList.add('hidden');

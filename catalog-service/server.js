@@ -704,47 +704,13 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
 // ROTAS ADMINISTRATIVAS & AUDITORIA REDIS
 // ==========================================
 
-// Elevação Segura de Papel para Administrador (Recuperação / Ativação de Admin)
-app.post('/api/me/elevate-admin', exigeLogin, async (req, res) => {
-  try {
-    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
-    if (!authRes.ok) return res.status(401).json({ error: 'Erro ao validar usuário no Auth Service.' });
-    const user = await authRes.json();
-
-    const response = await fetch(`${AUTH_SERVICE_URL}/users/${req.session.userId}/role`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'admin' })
-    });
-    const data = await response.json();
-
-    registrarLogAuditoria({
-      usuario_id: req.session.userId,
-      usuario_nome: user.nome,
-      usuario_email: user.email,
-      acao: 'ELEVACAO_ADMIN_SOLICITADA',
-      detalhes: { motivo: 'Ativação direta de papel administrativo' },
-      ip: req.ip
-    });
-
-    res.json({ success: true, message: 'Perfil promovido a Administrador com sucesso!' });
-  } catch (err) {
-    console.error('Erro ao promover para admin:', err);
-    res.status(500).json({ error: 'Erro ao atualizar privilégios administrativos.' });
-  }
-});
-
 // Listar Usuários (Exclusivo Admin)
 app.get('/api/users', exigeAdmin, async (req, res) => {
   try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/users`, { timeout: 3000 });
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Falha ao consultar usuários no Auth Service.' });
-    }
+    const response = await fetch(`${AUTH_SERVICE_URL}/users`);
     const data = await response.json();
-    res.json(Array.isArray(data) ? data : []);
+    res.status(response.status).json(data);
   } catch (err) {
-    console.error('Erro ao buscar usuários:', err);
     res.status(500).json({ error: 'Erro ao consultar usuários no Auth Service.' });
   }
 });
@@ -770,15 +736,12 @@ app.get('/api/admin/logs', exigeAdmin, async (req, res) => {
     const limit = req.query.limit || 100;
     const acao = req.query.acao || '';
     const query = new URLSearchParams({ limit, ...(acao ? { acao } : {}) }).toString();
-    const response = await fetch(`${LOG_SERVICE_URL}/logs?${query}`, { timeout: 3000 });
-    if (!response.ok) {
-      return res.json([]);
-    }
+    const response = await fetch(`${LOG_SERVICE_URL}/logs?${query}`);
     const data = await response.json();
-    res.json(Array.isArray(data) ? data : []);
+    res.status(response.status).json(data);
   } catch (err) {
-    console.warn('Log Service / Redis temporariamente indisponível:', err.message);
-    res.json([]);
+    console.error('Erro ao buscar logs de auditoria:', err);
+    res.status(500).json({ error: 'Erro ao consultar logs de auditoria no Log Service.' });
   }
 });
 

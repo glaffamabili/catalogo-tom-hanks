@@ -126,16 +126,6 @@ async function initDb() {
       await pool.query("UPDATE usuarios SET email_verificado = 1 WHERE email_verificado = 0");
     }
 
-    // Garante que o administrador principal (Amabili / glaffamabili@gmail.com / ID 1) tenha papel de admin e email verificado
-    await pool.query(`
-      UPDATE usuarios 
-      SET role = 'admin', email_verificado = 1 
-      WHERE id = 1 
-         OR email = 'glaffamabili@gmail.com' 
-         OR email LIKE '%amabili%' 
-         OR email LIKE '%admin%'
-    `);
-
     console.log('Banco de dados do Auth Service inicializado com sucesso.');
   } catch (err) {
     console.error('Erro ao inicializar tabelas do banco no Auth Service:', err);
