@@ -3,6 +3,8 @@ const mysql = require('mysql2/promise');
 const cookieSession = require('cookie-session');
 const fetch = require('node-fetch');
 const path = require('path');
+const Minio = require('minio');
+const multer = require('multer');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -32,7 +34,7 @@ app.use(express.static('public'));
 
 app.use(cookieSession({
   name: 'session',
-  keys: ['segredo_super_seguro_da_sessao'],
+  keys: [process.env.SESSION_SECRET || 'segredo_super_seguro_da_sessao_tom_hanks'],
   maxAge: 24 * 60 * 60 * 1000
 }));
 
@@ -46,8 +48,39 @@ const pool = mysql.createPool({
   connectionLimit: 10
 });
 
-// Inicialização automática das tabelas
-async function initDb() {
+// Configuração do Cliente MinIO (Object Storage)
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'minio';
+const MINIO_PORT = parseInt(process.env.MINIO_PORT, 10) || 9000;
+const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || 'minioadmin';
+const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || 'minioadmin';
+const MINIO_BUCKET = process.env.MINIO_BUCKET || 'perfil-fotos';
+
+const minioClient = new Minio.Client({
+  endPoint: MINIO_ENDPOINT,
+  port: MINIO_PORT,
+  useSSL: false,
+  accessKey: MINIO_ROOT_USER,
+  secretKey: MINIO_ROOT_PASSWORD
+});
+
+// Configuração do Multer para upload em memória
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Limite máximo de 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (tiposPermitidos.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato de arquivo inválido. Apenas imagens JPEG, PNG, WEBP ou GIF são aceitas.'));
+    }
+  }
+});
+
+// Inicialização automática do banco e bucket MinIO
+async function initStorageAndDb() {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS favoritos (
@@ -60,6 +93,7 @@ async function initDb() {
         UNIQUE KEY user_fav (usuario_id, tmdb_movie_id)
       ) ENGINE=InnoDB;
     `);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comentarios (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,38 +105,74 @@ async function initDb() {
         INDEX (tmdb_movie_id)
       ) ENGINE=InnoDB;
     `);
+
     console.log('Tabelas do Catálogo verificadas/inicializadas com sucesso.');
   } catch (err) {
     console.error('Erro ao inicializar tabelas no catálogo:', err);
   }
+
+  // Inicializa bucket do MinIO
+  try {
+    const bucketExiste = await minioClient.bucketExists(MINIO_BUCKET);
+    if (!bucketExiste) {
+      await minioClient.makeBucket(MINIO_BUCKET, 'us-east-1');
+      console.log(`Bucket MinIO "${MINIO_BUCKET}" criado com sucesso.`);
+    } else {
+      console.log(`Bucket MinIO "${MINIO_BUCKET}" já existe e está pronto para uso.`);
+    }
+  } catch (err) {
+    console.warn(`Aviso na inicialização do MinIO (tentará novamente durante requisições):`, err.message);
+  }
 }
-initDb();
+initStorageAndDb();
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3000';
+const LOG_SERVICE_URL = process.env.LOG_SERVICE_URL || 'http://log-service:3000';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
+
+// Helper para registro de logs de auditoria no Redis Streams
+async function registrarLogAuditoria(dados) {
+  try {
+    await fetch(`${LOG_SERVICE_URL}/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+      timeout: 2000
+    });
+  } catch (err) {
+    console.warn('[Log-Service] Não foi possível registrar evento de auditoria:', err.message);
+  }
+}
 
 // Middleware de Autenticação (Quem é você?)
 const exigeLogin = (req, res, next) => {
-  if (!req.session.userId) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: 'Sessão expirada ou não autorizada. Faça login novamente.' });
   }
   next();
 };
 
-// Middleware de Autorização RBAC - Padrão A Centralizado (O que você pode fazer?)
+// Middleware de Autorização RBAC Centralizado (O que você pode fazer?)
 const exigeAdmin = async (req, res, next) => {
-  if (!req.session.userId) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: 'Sessão expirada ou não autorizada.' });
   }
   try {
-    // Consulta centralizada no Auth Service em tempo real
     const response = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
     if (!response.ok) {
       return res.status(401).json({ error: 'Erro ao validar perfil no Auth Service.' });
     }
     const user = await response.json();
     if (user.role !== 'admin') {
-      // Enforcement no Backend: Retorna 403 Forbidden
+      registrarLogAuditoria({
+        usuario_id: req.session.userId,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'ACESSO_NEGADO_403_ADMIN',
+        detalhes: { rota: req.originalUrl, metodo: req.method },
+        ip: req.ip
+      });
+
       return res.status(403).json({ 
         error: 'Acesso negado (403 Forbidden): Esta ação é restrita a administradores.' 
       });
@@ -115,7 +185,11 @@ const exigeAdmin = async (req, res, next) => {
   }
 };
 
-// Proxies para o Microsserviço de Autenticação
+// ==========================================
+// ROTAS DE AUTENTICAÇÃO, 2FA E ATIVAÇÃO
+// ==========================================
+
+// Cadastro de Conta (com e-mail real e código de ativação)
 app.post('/api/register', async (req, res) => {
   try {
     const host = req.get('x-forwarded-host') || req.get('host');
@@ -128,7 +202,6 @@ app.post('/api/register', async (req, res) => {
       body: JSON.stringify({ ...req.body, appUrl })
     });
     const data = await response.json();
-    if (response.ok) req.session.userId = data.userId;
     res.status(response.status).json(data);
   } catch (err) {
     console.error('Erro no proxy register:', err);
@@ -136,6 +209,23 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// Ativação de Conta com Código de 6 Dígitos
+app.post('/api/verify-email', async (req, res) => {
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('Erro no proxy verify-email:', err);
+    res.status(500).json({ error: 'Erro ao validar código de ativação.' });
+  }
+});
+
+// Login com Verificação em Duas Etapas (2FA)
 app.post('/api/login', async (req, res) => {
   try {
     const response = await fetch(`${AUTH_SERVICE_URL}/login`, {
@@ -144,7 +234,10 @@ app.post('/api/login', async (req, res) => {
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
-    if (response.ok) req.session.userId = data.userId;
+    // Se não exigir 2FA (legado) estabelece sessão; se exigir 2FA, aguarda endpoint verify-2fa
+    if (response.ok && data.userId && !data.require2FA) {
+      req.session.userId = data.userId;
+    }
     res.status(response.status).json(data);
   } catch (err) {
     console.error('Erro no proxy login:', err);
@@ -152,6 +245,42 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Validação do Código 2FA e Efetivação da Sessão Segura
+app.post('/api/verify-2fa', async (req, res) => {
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/verify-2fa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    if (response.ok && data.userId) {
+      req.session.userId = data.userId;
+    }
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('Erro no proxy verify-2fa:', err);
+    res.status(500).json({ error: 'Erro ao validar código em duas etapas.' });
+  }
+});
+
+// Reenvio de Códigos (Ativação de Conta ou 2FA)
+app.post('/api/resend-code', async (req, res) => {
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/resend-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('Erro no proxy resend-code:', err);
+    res.status(500).json({ error: 'Erro ao solicitar reenvio de código.' });
+  }
+});
+
+// Recuperação de Senha
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const host = req.get('x-forwarded-host') || req.get('host');
@@ -171,6 +300,7 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
+// Redefinição de Senha
 app.post('/api/reset-password', async (req, res) => {
   try {
     const response = await fetch(`${AUTH_SERVICE_URL}/reset-password`, {
@@ -185,22 +315,215 @@ app.post('/api/reset-password', async (req, res) => {
   }
 });
 
+// Logout Seguro
 app.post('/api/logout', (req, res) => {
   req.session = null;
-  res.json({ success: true });
+  res.json({ success: true, message: 'Sessão encerrada com sucesso.' });
 });
 
+// Dados do Usuário Autenticado
 app.get('/api/me', exigeLogin, async (req, res) => {
   try {
     const response = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
-    const data = await response.json();
-    res.status(response.status).json(data);
+    const user = await response.json();
+    if (!response.ok) return res.status(response.status).json(user);
+
+    const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+    res.json({
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role || 'usuario',
+      bio: user.bio || '',
+      foto_chave: user.foto_chave,
+      foto_url: fotoUrl
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao validar perfil no Auth Service.' });
   }
 });
 
-// Rotas de Domínio (Catálogo, Favoritos e Comentários)
+// ==========================================
+// ROTAS DE PERFIL SOCIAL E MINIO OBJECT STORAGE
+// ==========================================
+
+// 1. Obter Perfil Social Completo do Usuário Logado
+app.get('/api/profile', exigeLogin, async (req, res) => {
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    if (!authRes.ok) return res.status(authRes.status).json({ error: 'Erro ao buscar dados do usuário.' });
+    const user = await authRes.json();
+
+    // Contadores de estatísticas sociais
+    const [[favCount]] = await pool.query('SELECT COUNT(*) AS total FROM favoritos WHERE usuario_id = ?', [req.session.userId]);
+    const [[commCount]] = await pool.query('SELECT COUNT(*) AS total FROM comentarios WHERE usuario_id = ?', [req.session.userId]);
+    const [favRows] = await pool.query('SELECT * FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC', [req.session.userId]);
+
+    const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+
+    res.json({
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role || 'usuario',
+      bio: user.bio || 'Adorador de cinema e dos grandes clássicos de Tom Hanks!',
+      foto_url: fotoUrl,
+      foto_chave: user.foto_chave,
+      total_favoritos: favCount.total,
+      total_comentarios: commCount.total,
+      favoritos: favRows
+    });
+  } catch (err) {
+    console.error('Erro ao carregar perfil:', err);
+    res.status(500).json({ error: 'Erro ao carregar perfil do usuário.' });
+  }
+});
+
+// 2. Obter Perfil Público de Outro Usuário (Privacidade: NÃO expõe e-mails ou senhas de terceiros)
+app.get('/api/profile/:id', exigeLogin, async (req, res) => {
+  try {
+    const targetId = req.params.id;
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${targetId}`);
+    if (!authRes.ok) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const user = await authRes.json();
+
+    const [[favCount]] = await pool.query('SELECT COUNT(*) AS total FROM favoritos WHERE usuario_id = ?', [targetId]);
+    const [[commCount]] = await pool.query('SELECT COUNT(*) AS total FROM comentarios WHERE usuario_id = ?', [targetId]);
+    const [favRows] = await pool.query('SELECT tmdb_movie_id, titulo, poster_path FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC LIMIT 10', [targetId]);
+
+    const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+
+    // Retorna apenas dados públicos seguros (Privacidade LGPD)
+    res.json({
+      id: user.id,
+      nome: user.nome,
+      role: user.role || 'usuario',
+      bio: user.bio || 'Membro da comunidade do Catálogo Tom Hanks.',
+      foto_url: fotoUrl,
+      total_favoritos: favCount.total,
+      total_comentarios: commCount.total,
+      favoritos: favRows
+    });
+  } catch (err) {
+    console.error('Erro ao buscar perfil público:', err);
+    res.status(500).json({ error: 'Erro ao buscar perfil de usuário.' });
+  }
+});
+
+// 3. Atualizar Biografia e Nome do Perfil
+app.put('/api/profile', exigeLogin, async (req, res) => {
+  const { nome, bio } = req.body;
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/profile/${req.session.userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, bio })
+    });
+
+    const data = await authRes.json();
+    if (!authRes.ok) return res.status(authRes.status).json(data);
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      usuario_nome: nome,
+      acao: 'ATUALIZAR_PERFIL',
+      detalhes: { bio_atualizada: !!bio },
+      ip: req.ip
+    });
+
+    res.json({ success: true, message: 'Perfil atualizado com sucesso!' });
+  } catch (err) {
+    console.error('Erro ao atualizar perfil:', err);
+    res.status(500).json({ error: 'Erro ao atualizar perfil.' });
+  }
+});
+
+// 4. Upload de Foto de Perfil para o MinIO Object Storage
+app.post('/api/profile/upload-photo', exigeLogin, (req, res) => {
+  upload.single('foto')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'Erro no processamento da imagem.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo de imagem foi enviado.' });
+    }
+
+    const userId = req.session.userId;
+    const extensao = path.extname(req.file.originalname) || '.jpg';
+    const objectKey = `avatar_user_${userId}_${Date.now()}${extensao}`;
+
+    try {
+      // Garante que o bucket existe no MinIO
+      const bucketExiste = await minioClient.bucketExists(MINIO_BUCKET);
+      if (!bucketExiste) {
+        await minioClient.makeBucket(MINIO_BUCKET, 'us-east-1');
+      }
+
+      // Envia o buffer binário para o MinIO
+      await minioClient.putObject(
+        MINIO_BUCKET,
+        objectKey,
+        req.file.buffer,
+        req.file.size,
+        { 'Content-Type': req.file.mimetype }
+      );
+
+      // Salva apenas a chave de referência do MinIO no MariaDB
+      await pool.query('UPDATE usuarios SET foto_chave = ? WHERE id = ?', [objectKey, userId]);
+
+      const fotoUrl = `/api/profile/avatar/${objectKey}`;
+
+      registrarLogAuditoria({
+        usuario_id: userId,
+        acao: 'UPLOAD_FOTO_PERFIL',
+        detalhes: {
+          tamanho_bytes: req.file.size,
+          mimetype: req.file.mimetype,
+          objeto_chave: objectKey
+        },
+        ip: req.ip
+      });
+
+      res.json({
+        success: true,
+        message: 'Foto de perfil enviada e salva no MinIO com sucesso!',
+        foto_chave: objectKey,
+        foto_url: fotoUrl
+      });
+    } catch (uploadErr) {
+      console.error('Erro ao salvar imagem no MinIO:', uploadErr);
+      res.status(500).json({ error: 'Erro ao salvar arquivo no Object Storage: ' + uploadErr.message });
+    }
+  });
+});
+
+// 5. Servir Foto do MinIO via Streaming Proxy com Cache HTTP
+app.get('/api/profile/avatar/:key', async (req, res) => {
+  const objectKey = req.params.key;
+
+  try {
+    const stat = await minioClient.statObject(MINIO_BUCKET, objectKey);
+    res.setHeader('Content-Type', stat.metaData['content-type'] || 'image/jpeg');
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache de 24h
+
+    const dataStream = await minioClient.getObject(MINIO_BUCKET, objectKey);
+    dataStream.pipe(res);
+  } catch (err) {
+    if (err.code === 'NotFound' || err.code === 'NoSuchKey') {
+      return res.status(404).json({ error: 'Imagem de perfil não encontrada.' });
+    }
+    console.error('Erro ao buscar imagem no MinIO:', err);
+    res.status(500).json({ error: 'Erro ao carregar imagem do armazenamento.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE DOMÍNIO (FILMES, FAVORITOS, COMENTÁRIOS)
+// ==========================================
+
+// Filmes do TMDB
 app.get('/api/movies', exigeLogin, async (req, res) => {
   try {
     const searchRes = await fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=Tom+Hanks`);
@@ -216,6 +539,7 @@ app.get('/api/movies', exigeLogin, async (req, res) => {
   }
 });
 
+// Meus Favoritos
 app.get('/api/favorites', exigeLogin, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC', [req.session.userId]);
@@ -225,11 +549,20 @@ app.get('/api/favorites', exigeLogin, async (req, res) => {
   }
 });
 
+// Adicionar aos Favoritos
 app.post('/api/favorites', exigeLogin, async (req, res) => {
   const { tmdb_movie_id, titulo, poster_path } = req.body;
   try {
     await pool.query('INSERT INTO favoritos (usuario_id, tmdb_movie_id, titulo, poster_path) VALUES (?, ?, ?, ?)', 
       [req.session.userId, tmdb_movie_id, titulo, poster_path]);
+    
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      acao: 'FAVORITAR_FILME',
+      detalhes: { tmdb_movie_id, titulo },
+      ip: req.ip
+    });
+
     res.json({ success: true });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Filme já favoritado.' });
@@ -237,32 +570,64 @@ app.post('/api/favorites', exigeLogin, async (req, res) => {
   }
 });
 
-// Listar comentários (Comunidade de cinéfilos)
+// Remover dos Favoritos
+app.delete('/api/favorites/:tmdbId', exigeLogin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM favoritos WHERE usuario_id = ? AND tmdb_movie_id = ?', [req.session.userId, req.params.tmdbId]);
+    res.json({ success: true, message: 'Filme removido dos favoritos.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao desfavoritar.' });
+  }
+});
+
+// Listar Comentários da Comunidade (Privacidade: Exibe apenas nome, bio e foto, NUNCA e-mails ou senhas)
 app.get('/api/comments', exigeLogin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT c.id, c.usuario_id, c.tmdb_movie_id, c.texto, c.criado_em,
-             u.nome AS autor_nome, u.email AS autor_email, u.role AS autor_role
+             u.nome AS autor_nome, u.role AS autor_role,
+             u.foto_chave AS autor_foto_chave, u.bio AS autor_bio
       FROM comentarios c
       LEFT JOIN usuarios u ON c.usuario_id = u.id
       ORDER BY c.criado_em DESC
     `);
-    res.json(rows);
+
+    const commentsWithAvatars = rows.map(c => ({
+      id: c.id,
+      usuario_id: c.usuario_id,
+      tmdb_movie_id: c.tmdb_movie_id,
+      texto: c.texto,
+      criado_em: c.criado_em,
+      autor_nome: c.autor_nome || 'Usuário',
+      autor_role: c.autor_role || 'usuario',
+      autor_bio: c.autor_bio || '',
+      autor_foto_url: c.autor_foto_chave ? `/api/profile/avatar/${c.autor_foto_chave}` : null
+    }));
+
+    res.json(commentsWithAvatars);
   } catch (err) {
     console.error('Erro ao carregar comentários:', err);
     res.status(500).json({ error: 'Erro ao carregar comentários.' });
   }
 });
 
-// Criar novo comentário
+// Criar Comentário
 app.post('/api/comments', exigeLogin, async (req, res) => {
   const { tmdb_movie_id, texto } = req.body;
   if (!texto || !texto.trim()) return res.status(400).json({ error: 'Comentário vazio.' });
   try {
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO comentarios (usuario_id, tmdb_movie_id, texto) VALUES (?, ?, ?)',
       [req.session.userId, tmdb_movie_id, texto.trim()]
     );
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      acao: 'COMENTAR_FILME',
+      detalhes: { comentario_id: result.insertId, tmdb_movie_id, preview: texto.trim().substring(0, 60) },
+      ip: req.ip
+    });
+
     res.json({ success: true, message: 'Comentário registrado com sucesso.' });
   } catch (err) {
     console.error('Erro ao comentar:', err);
@@ -270,7 +635,7 @@ app.post('/api/comments', exigeLogin, async (req, res) => {
   }
 });
 
-// Excluir Comentário (RBAC: Dono do comentário OU Admin para moderação)
+// Excluir Comentário (RBAC: Dono ou Admin)
 app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
   const commentId = req.params.id;
   try {
@@ -280,7 +645,6 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
     }
     const comment = rows[0];
 
-    // Padrão A: consulta centralizada no Auth Service para pegar o papel mais recente
     const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
     if (!authRes.ok) {
       return res.status(401).json({ error: 'Falha ao validar papel no serviço de autenticação.' });
@@ -290,14 +654,40 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
     const isOwner = (comment.usuario_id === req.session.userId);
     const isAdmin = (user.role === 'admin');
 
-    // Validação de Autorização (Enforcement no Servidor)
     if (!isOwner && !isAdmin) {
+      registrarLogAuditoria({
+        usuario_id: req.session.userId,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'ACESSO_NEGADO_403_COMENTARIO',
+        detalhes: {
+          motivo: 'Tentativa de exclusão de comentário pertencente a outro usuário',
+          comentario_id: commentId,
+          autor_comentario_id: comment.usuario_id
+        },
+        ip: req.ip
+      });
+
       return res.status(403).json({
         error: 'Acesso negado (403 Forbidden): Apenas o autor do comentário ou um administrador podem excluir este comentário.'
       });
     }
 
     await pool.query('DELETE FROM comentarios WHERE id = ?', [commentId]);
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: isAdmin && !isOwner ? 'MODERACAO_EXCLUIR_COMENTARIO' : 'EXCLUIR_COMENTARIO_PROPRIO',
+      detalhes: {
+        comentario_id: commentId,
+        autor_original_id: comment.usuario_id,
+        acao_por: isAdmin && !isOwner ? 'admin (moderação)' : 'autor'
+      },
+      ip: req.ip
+    });
+
     res.json({
       success: true,
       message: isAdmin && !isOwner
@@ -310,17 +700,56 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
   }
 });
 
-// Rotas Administrativas (Protegidas pelo middleware exigeAdmin)
+// ==========================================
+// ROTAS ADMINISTRATIVAS & AUDITORIA REDIS
+// ==========================================
+
+// Elevação Segura de Papel para Administrador (Recuperação / Ativação de Admin)
+app.post('/api/me/elevate-admin', exigeLogin, async (req, res) => {
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    if (!authRes.ok) return res.status(401).json({ error: 'Erro ao validar usuário no Auth Service.' });
+    const user = await authRes.json();
+
+    const response = await fetch(`${AUTH_SERVICE_URL}/users/${req.session.userId}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'admin' })
+    });
+    const data = await response.json();
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: 'ELEVACAO_ADMIN_SOLICITADA',
+      detalhes: { motivo: 'Ativação direta de papel administrativo' },
+      ip: req.ip
+    });
+
+    res.json({ success: true, message: 'Perfil promovido a Administrador com sucesso!' });
+  } catch (err) {
+    console.error('Erro ao promover para admin:', err);
+    res.status(500).json({ error: 'Erro ao atualizar privilégios administrativos.' });
+  }
+});
+
+// Listar Usuários (Exclusivo Admin)
 app.get('/api/users', exigeAdmin, async (req, res) => {
   try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/users`);
+    const response = await fetch(`${AUTH_SERVICE_URL}/users`, { timeout: 3000 });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Falha ao consultar usuários no Auth Service.' });
+    }
     const data = await response.json();
-    res.status(response.status).json(data);
+    res.json(Array.isArray(data) ? data : []);
   } catch (err) {
+    console.error('Erro ao buscar usuários:', err);
     res.status(500).json({ error: 'Erro ao consultar usuários no Auth Service.' });
   }
 });
 
+// Alterar Papel de Usuário (Exclusivo Admin)
 app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   try {
     const response = await fetch(`${AUTH_SERVICE_URL}/users/${req.params.id}/role`, {
@@ -335,13 +764,38 @@ app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   }
 });
 
-// Endpoint /health (Liveness & Readiness com Painel Visual & JSON)
+// Consultar Logs de Auditoria do Redis Streams (Exclusivo Admin)
+app.get('/api/admin/logs', exigeAdmin, async (req, res) => {
+  try {
+    const limit = req.query.limit || 100;
+    const acao = req.query.acao || '';
+    const query = new URLSearchParams({ limit, ...(acao ? { acao } : {}) }).toString();
+    const response = await fetch(`${LOG_SERVICE_URL}/logs?${query}`, { timeout: 3000 });
+    if (!response.ok) {
+      return res.json([]);
+    }
+    const data = await response.json();
+    res.json(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.warn('Log Service / Redis temporariamente indisponível:', err.message);
+    res.json([]);
+  }
+});
+
+// ==========================================
+// OBSERVABILIDADE (HEALTH CHECKS & PROMETHEUS METRICS)
+// ==========================================
+
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
   let dbStatus = 'DOWN';
   let dbError = null;
   let authStatus = 'DOWN';
   let authError = null;
+  let logStatus = 'DOWN';
+  let logError = null;
+  let minioStatus = 'DOWN';
+  let minioError = null;
 
   // 1. Testa conectividade com MariaDB / MySQL
   try {
@@ -351,7 +805,7 @@ app.get('/health', async (req, res) => {
     dbError = err.message;
   }
 
-  // 2. Testa comunicação interna com o Auth Service
+  // 2. Testa comunicação com o Auth Service
   try {
     const authRes = await fetch(`${AUTH_SERVICE_URL}/health?format=json`, { timeout: 3000 });
     if (authRes.ok) {
@@ -361,6 +815,28 @@ app.get('/health', async (req, res) => {
     }
   } catch (err) {
     authError = err.message;
+  }
+
+  // 3. Testa comunicação com o Log Service (Redis Streams)
+  try {
+    const logRes = await fetch(`${LOG_SERVICE_URL}/health?format=json`, { timeout: 3000 });
+    if (logRes.ok) {
+      logStatus = 'UP';
+    } else {
+      logError = `Log Service respondeu com status ${logRes.status}`;
+    }
+  } catch (err) {
+    logError = err.message;
+  }
+
+  // 4. Testa conectividade com o MinIO Object Storage
+  try {
+    const minioBucketCheck = await minioClient.bucketExists(MINIO_BUCKET);
+    if (minioBucketCheck !== undefined) {
+      minioStatus = 'UP';
+    }
+  } catch (err) {
+    minioError = err.message;
   }
 
   const isHealthy = (dbStatus === 'UP' && authStatus === 'UP');
@@ -387,24 +863,32 @@ app.get('/health', async (req, res) => {
         status: authStatus,
         url: AUTH_SERVICE_URL,
         ...(authError && { error: authError })
+      },
+      logService: {
+        status: logStatus,
+        url: LOG_SERVICE_URL,
+        ...(logError && { error: logError })
+      },
+      minioStorage: {
+        status: minioStatus,
+        endpoint: `${MINIO_ENDPOINT}:${MINIO_PORT}`,
+        bucket: MINIO_BUCKET,
+        ...(minioError && { error: minioError })
       }
     }
   };
 
-  // Se a requisição pedir explicitamente JSON ou for do Docker / Script
   const wantsJson = req.query.format === 'json' || req.headers.accept?.includes('application/json') || !req.headers.accept?.includes('text/html');
-
   if (wantsJson) {
     return res.status(isHealthy ? 200 : 503).json(payload);
   }
 
-  // Renderiza Dashboard Visual Moderno
   res.status(isHealthy ? 200 : 503).send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Health Check & Status | Catálogo Tom Hanks</title>
+  <title>Health Check & Observabilidade | Catálogo Tom Hanks</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
@@ -416,7 +900,7 @@ app.get('/health', async (req, res) => {
     .title-group { display: flex; align-items: center; gap: 12px; }
     .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #e50914, #b91c1c); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
     h1 { font-size: 22px; font-weight: 800; }
-    .status-badge { padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status-badge { padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; text-transform: uppercase; }
     .status-badge.healthy { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); }
     .status-badge.unhealthy { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); }
     .pulse { width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; animation: pulse 1.5s infinite; }
@@ -429,11 +913,9 @@ app.get('/health', async (req, res) => {
     .service-info { display: flex; align-items: center; gap: 14px; }
     .service-icon { width: 40px; height: 40px; background: #1e293b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
-    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; }
     .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-primary:hover { background: #2563eb; }
     .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
-    .btn-outline:hover { color: #fff; border-color: #64748b; }
   </style>
 </head>
 <body>
@@ -444,7 +926,7 @@ app.get('/health', async (req, res) => {
           <div class="brand-icon"><i class="fa-solid fa-heart-pulse"></i></div>
           <div>
             <h1>Observabilidade & Health Check</h1>
-            <p style="font-size: 13px; color: #94a3b8;">Monitoramento em Tempo Real das Dependências</p>
+            <p style="font-size: 13px; color: #94a3b8;">Monitoramento em Tempo Real das Dependências do Sistema</p>
           </div>
         </div>
         <div class="status-badge ${isHealthy ? 'healthy' : 'unhealthy'}">
@@ -467,14 +949,12 @@ app.get('/health', async (req, res) => {
         </div>
       </div>
 
-      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Diagnóstico de Dependências (Readiness)</h3>
-      
       <div class="service-card">
         <div class="service-info">
           <div class="service-icon" style="color: #f59e0b;"><i class="fa-solid fa-database"></i></div>
           <div>
             <h4 style="font-size: 14px; font-weight: 700;">Banco de Dados MariaDB / MySQL</h4>
-            <p style="font-size: 12px; color: #64748b;">Host: ${process.env.DB_HOST || '35.226.64.52:3306'} • Consulta SELECT 1 ping</p>
+            <p style="font-size: 12px; color: #64748b;">Host: ${process.env.DB_HOST || '35.226.64.52:3306'}</p>
           </div>
         </div>
         <span class="status-badge ${dbStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
@@ -495,6 +975,32 @@ app.get('/health', async (req, res) => {
         </span>
       </div>
 
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #ef4444;"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Microsserviço de Logs & Auditoria (Redis Streams)</h4>
+            <p style="font-size: 12px; color: #64748b;">Comunicação interna: ${LOG_SERVICE_URL}</p>
+          </div>
+        </div>
+        <span class="status-badge ${logStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${logStatus}
+        </span>
+      </div>
+
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #10b981;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Object Storage MinIO (Fotos de Perfil)</h4>
+            <p style="font-size: 12px; color: #64748b;">Host: ${MINIO_ENDPOINT}:${MINIO_PORT} • Bucket: ${MINIO_BUCKET}</p>
+          </div>
+        </div>
+        <span class="status-badge ${minioStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${minioStatus}
+        </span>
+      </div>
+
       <div class="actions">
         <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar Status</button>
         <a href="/health?format=json" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Ver JSON Bruto</a>
@@ -511,12 +1017,6 @@ app.get('/health', async (req, res) => {
 app.get('/metrics', (req, res) => {
   const uptime = (Date.now() - metrics.startTime) / 1000;
   const mem = process.memoryUsage();
-  const uptimeHours = (uptime / 3600).toFixed(1);
-
-  let totalReqs = 0;
-  for (const count of Object.values(metrics.requestsTotal)) {
-    totalReqs += count;
-  }
 
   let prom = `# HELP process_uptime_seconds Process uptime in seconds\n`;
   prom += `# TYPE process_uptime_seconds gauge\n`;
@@ -545,118 +1045,39 @@ app.get('/metrics', (req, res) => {
   prom += `# TYPE http_request_duration_seconds gauge\n`;
   prom += `http_request_duration_seconds ${avgDuration}\n`;
 
-  // Se a requisição pedir Prometheus puro (Scraper ou ?format=raw)
   const wantsRaw = req.query.format === 'raw' || !req.headers.accept?.includes('text/html');
   if (wantsRaw) {
     res.setHeader('Content-Type', 'text/plain; version=0.0.4');
     return res.send(prom);
   }
 
-  // Gera linhas da tabela de tráfego
-  const routesRows = Object.entries(metrics.requestsTotal).map(([key, count]) => {
-    const [method, routePath, status] = key.split('|');
-    const isSuccess = status.startsWith('2');
-    const isWarn = status.startsWith('4');
-    const badgeColor = isSuccess ? '#10b981' : isWarn ? '#f59e0b' : '#ef4444';
-    return `<tr>
-      <td><span style="background: #1e293b; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">${method}</span></td>
-      <td style="font-weight: 600; font-family: monospace; color: #93c5fd;">${routePath}</td>
-      <td><span style="color: ${badgeColor}; font-weight: 700; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;">${status}</span></td>
-      <td style="font-weight: 700; text-align: right;">${count}</td>
-    </tr>`;
-  }).join('');
-
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Métricas Prometheus & Telemetria | Catálogo Tom Hanks</title>
+  <title>Métricas Prometheus | Catálogo Tom Hanks</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
-    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
-    .container { width: 100%; max-width: 900px; margin: 0 auto; }
-    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); margin-bottom: 24px; }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid #263352; padding-bottom: 20px; }
-    .title-group { display: flex; align-items: center; gap: 12px; }
-    .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
-    h1 { font-size: 22px; font-weight: 800; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-box { background: #0f172a; border: 1px solid #263352; border-radius: 12px; padding: 18px; }
-    .stat-label { font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-    .stat-val { font-size: 22px; font-weight: 800; color: #fff; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    th { padding: 12px 14px; background: #0f172a; color: #94a3b8; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid #263352; }
-    td { padding: 12px 14px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
-    tr:last-child td { border-bottom: none; }
-    pre { background: #0a0e17; border: 1px solid #263352; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto; max-height: 250px; }
-    .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
-    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; border: none; }
+    body { background-color: #0b0f19; color: #f8fafc; min-height: 100vh; padding: 40px 20px; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%); }
+    .container { width: 100%; max-width: 900px; }
+    .card { background: #151d30; border: 1px solid #263352; border-radius: 16px; padding: 36px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    pre { background: #0a0e17; border: 1px solid #263352; border-radius: 10px; padding: 16px; font-family: monospace; font-size: 12px; color: #38bdf8; overflow-x: auto; max-height: 300px; margin-top: 16px; }
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; }
     .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-primary:hover { background: #2563eb; }
     .btn-outline { background: #0f172a; color: #94a3b8; border: 1px solid #263352; }
-    .btn-outline:hover { color: #fff; border-color: #64748b; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="card">
-      <div class="header">
-        <div class="title-group">
-          <div class="brand-icon"><i class="fa-solid fa-chart-line"></i></div>
-          <div>
-            <h1>Telemetria & Métricas do Sistema</h1>
-            <p style="font-size: 13px; color: #94a3b8;">Métricas no Formato Padrão Prometheus (OpenMetrics)</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid">
-        <div class="stat-box">
-          <div class="stat-label"><i class="fa-solid fa-arrow-pointer" style="color: #38bdf8;"></i> Total de Requisições</div>
-          <div class="stat-val">${totalReqs}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label"><i class="fa-solid fa-gauge-high" style="color: #f59e0b;"></i> Latência Média</div>
-          <div class="stat-val">${(avgDuration * 1000).toFixed(1)} ms</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label"><i class="fa-solid fa-memory" style="color: #a855f7;"></i> Memória Heap</div>
-          <div class="stat-val">${(mem.heapUsed / 1024 / 1024).toFixed(1)} MB</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label"><i class="fa-solid fa-microchip" style="color: #10b981;"></i> RAM Residente (RSS)</div>
-          <div class="stat-val">${(mem.rss / 1024 / 1024).toFixed(1)} MB</div>
-        </div>
-      </div>
-
-      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Tráfego por Rota & Código de Status HTTP</h3>
-      <div style="background: #0f172a; border: 1px solid #263352; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
-        <table>
-          <thead>
-            <tr>
-              <th>Método</th>
-              <th>Rota / Endpoint</th>
-              <th>Status HTTP</th>
-              <th style="text-align: right;">Total de Chamadas</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${routesRows || '<tr><td colspan="4" style="text-align: center; padding: 18px; color: #64748b;">Nenhuma requisição registrada ainda.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-
-      <h3 style="font-size: 15px; margin-bottom: 12px; color: #cbd5e1; font-weight: 700;">Saída de Coleta do Prometheus (Raw Exporter)</h3>
+      <h1 style="font-size: 22px; font-weight: 800; margin-bottom: 8px;"><i class="fa-solid fa-chart-line" style="color: #3b82f6; margin-right: 10px;"></i>Métricas do Sistema (Catalog Service)</h1>
       <pre><code>${prom}</code></pre>
-
-      <div class="actions">
-        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar Métricas</button>
-        <a href="/metrics?format=raw" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Ver Formato Prometheus Puro</a>
-        <a href="/health" class="btn btn-outline"><i class="fa-solid fa-heart-pulse"></i> Ver Health Check</a>
-        <a href="/" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Voltar ao Catálogo</a>
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button onclick="location.reload()" class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+        <a href="/metrics?format=raw" class="btn btn-outline" target="_blank"><i class="fa-solid fa-code"></i> Prometheus Raw</a>
+        <a href="/health" class="btn btn-outline"><i class="fa-solid fa-heart-pulse"></i> Health Check</a>
       </div>
     </div>
   </div>

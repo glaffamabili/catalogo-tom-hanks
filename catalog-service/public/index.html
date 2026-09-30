@@ -3,31 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo Tom Hanks | Filmes, Favoritos & Moderação RBAC</title>
-  <!-- Google Fonts -->
+  <title>Catálogo Tom Hanks — Rede Social de Cinema</title>
+  
+  <!-- Fontes & Ícones -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Font Awesome Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
   <style>
     :root {
-      --bg-main: #0b0f19;
+      --bg-dark: #0b0f19;
       --bg-card: #151d30;
-      --bg-card-hover: #1c2742;
-      --bg-input: #0f172a;
+      --bg-input: #0a0e17;
       --border-color: #263352;
       --accent: #e50914;
-      --accent-hover: #f40612;
-      --accent-gold: #f59e0b;
+      --accent-hover: #b80710;
       --accent-blue: #3b82f6;
       --accent-green: #10b981;
+      --accent-gold: #f59e0b;
       --accent-purple: #8b5cf6;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-dim: #64748b;
       --radius: 12px;
-      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -39,102 +39,200 @@
     }
 
     body {
-      background-color: var(--bg-main);
+      background-color: var(--bg-dark);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      background-image: radial-gradient(circle at top, #1e1b4b 0%, var(--bg-dark) 70%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 20px;
     }
 
     .hidden {
       display: none !important;
     }
 
-    /* Container */
-    .container {
-      width: 100%;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 20px;
+    /* Navbar */
+    .navbar {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 14px 0;
     }
 
-    /* Toasts / Notificações */
-    #toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 9999;
+    .nav-container {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
     }
 
-    .toast {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 14px 20px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .nav-brand span {
+      color: var(--accent);
+    }
+
+    .nav-links {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      animation: slideIn 0.3s ease forwards;
-      min-width: 280px;
-      max-width: 440px;
+      flex-wrap: wrap;
     }
 
-    .toast.success { border-left: 4px solid var(--accent-green); }
-    .toast.error { border-left: 4px solid var(--accent); }
-    .toast.info { border-left: 4px solid var(--accent-blue); }
-    .toast.warning { border-left: 4px solid var(--accent-gold); }
-
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+    .nav-link-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      transition: var(--transition);
     }
 
-    /* Auth Layout */
-    .auth-wrapper {
-      min-height: 100vh;
+    .nav-link-btn:hover {
+      color: #fff;
+      border-color: #3b82f6;
+    }
+
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e293b;
+      padding: 5px 12px 5px 6px;
+      border-radius: 30px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .user-profile-badge:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .user-avatar-slot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
-      background: radial-gradient(circle at top, #1e1b4b 0%, #0b0f19 70%);
+      font-weight: 800;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    .user-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .role-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-tag.admin {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-gold);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .role-tag.usuario {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+    }
+
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Auth Wrapper & Tabs */
+    .auth-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 60px);
+      padding: 40px 20px;
     }
 
     .auth-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 16px;
-      padding: 40px;
+      padding: 36px 32px;
       width: 100%;
-      max-width: 460px;
+      max-width: 440px;
       box-shadow: var(--shadow);
+      position: relative;
     }
 
     .brand {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
+      text-align: center;
       margin-bottom: 24px;
     }
 
     .brand-icon {
-      width: 48px;
-      height: 48px;
-      background: linear-gradient(135deg, var(--accent), #b91c1c);
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--accent), #991b1b);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: 24px;
       color: #fff;
-      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+      margin: 0 auto 12px;
     }
 
     .brand-title {
@@ -148,37 +246,36 @@
     }
 
     .auth-tabs {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
       background: var(--bg-input);
-      border-radius: 10px;
       padding: 4px;
+      border-radius: 10px;
       margin-bottom: 24px;
       border: 1px solid var(--border-color);
     }
 
     .auth-tab {
-      flex: 1;
-      text-align: center;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      background: transparent;
+      border: none;
       color: var(--text-muted);
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
       cursor: pointer;
       transition: var(--transition);
-      border: none;
-      background: transparent;
     }
 
     .auth-tab.active {
-      background: var(--accent);
+      background: #1e293b;
       color: #fff;
-      box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
     .form-group {
       margin-bottom: 16px;
-      text-align: left;
     }
 
     .form-group label {
@@ -199,16 +296,16 @@
       position: absolute;
       left: 14px;
       color: var(--text-dim);
-      font-size: 15px;
+      font-size: 14px;
     }
 
     .form-control {
       width: 100%;
       background: var(--bg-input);
       border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 12px 14px 12px 42px;
-      border-radius: 10px;
+      color: #fff;
+      padding: 12px 14px 12px 40px;
+      border-radius: 8px;
       font-size: 14px;
       outline: none;
       transition: var(--transition);
@@ -219,36 +316,39 @@
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
-    select.form-control {
-      padding-left: 42px;
-      appearance: none;
-      cursor: pointer;
+    .otp-input {
+      font-family: monospace;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      text-align: center;
+      padding: 12px;
+      color: #38bdf8;
     }
 
     .btn {
       width: 100%;
-      padding: 13px;
-      border-radius: 10px;
-      font-size: 15px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      border: none;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      border: none;
       transition: var(--transition);
+      margin-top: 10px;
     }
 
     .btn-primary {
       background: var(--accent);
       color: #fff;
-      box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35);
     }
 
     .btn-primary:hover {
       background: var(--accent-hover);
-      transform: translateY(-1px);
     }
 
     .btn-success {
@@ -258,163 +358,82 @@
 
     .btn-success:hover {
       background: #059669;
-      transform: translateY(-1px);
+    }
+
+    .btn-blue {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+
+    .btn-blue:hover {
+      background: #2563eb;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    .btn-outline:hover {
+      color: #fff;
+      border-color: #94a3b8;
     }
 
     .btn-link {
       background: transparent;
-      color: var(--accent-blue);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
       border: none;
-      margin-top: 14px;
-      text-decoration: underline;
-      display: block;
-      width: 100%;
-      text-align: center;
-    }
-
-    .btn-link:hover {
-      color: #60a5fa;
-    }
-
-    .auth-error {
-      color: #f87171;
-      font-size: 13px;
-      margin-top: 12px;
-      text-align: center;
-      font-weight: 500;
-    }
-
-    /* Navbar */
-    .navbar {
-      background: rgba(21, 29, 48, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border-color);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      padding: 16px 0;
-    }
-
-    .nav-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: var(--text-main);
-      font-size: 18px;
-      font-weight: 800;
-    }
-
-    .nav-brand span {
-      color: var(--accent);
-    }
-
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .user-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-input);
-      border: 1px solid var(--border-color);
-      padding: 6px 14px;
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .user-avatar {
-      width: 26px;
-      height: 26px;
-      background: var(--accent-blue);
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      color: var(--text-dim);
       font-size: 12px;
-      font-weight: 700;
-    }
-
-    .role-tag {
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .role-tag.admin {
-      background: rgba(245, 158, 11, 0.2);
-      color: var(--accent-gold);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-    }
-
-    .role-tag.usuario {
-      background: rgba(59, 130, 246, 0.15);
-      color: var(--accent-blue);
-    }
-
-    .btn-logout {
-      background: #ef4444;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      margin-top: 14px;
+      text-align: center;
+      width: 100%;
       transition: var(--transition);
     }
 
-    .btn-logout:hover {
-      background: #dc2626;
-      transform: translateY(-1px);
+    .btn-link:hover {
+      color: #fff;
+      text-decoration: underline;
     }
 
-    /* Hero Banner */
+    .auth-error {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: #f87171;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+
+    /* Main Application Header & Tabs */
     .hero-banner {
-      padding: 40px 0 20px;
+      padding: 32px 0 24px;
       text-align: center;
     }
 
     .hero-title {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
     }
 
     .hero-subtitle {
+      font-size: 15px;
       color: var(--text-muted);
-      font-size: 16px;
       max-width: 600px;
-      margin: 0 auto 30px;
+      margin: 0 auto 24px;
     }
 
-    /* App Nav Tabs */
     .app-tabs {
       display: flex;
       justify-content: center;
-      gap: 12px;
-      margin-bottom: 30px;
+      gap: 10px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
     }
 
@@ -422,27 +441,27 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       color: var(--text-muted);
-      padding: 10px 22px;
-      border-radius: 50px;
+      padding: 10px 18px;
+      border-radius: 10px;
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      transition: var(--transition);
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
+      transition: var(--transition);
     }
 
     .app-tab-btn:hover {
-      color: var(--text-main);
-      border-color: var(--text-dim);
+      color: #fff;
+      border-color: #3b82f6;
     }
 
     .app-tab-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
+      background: #1e293b;
       color: #fff;
-      box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+      border-color: var(--accent-blue);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
     }
 
     .app-tab-btn.admin-tab {
@@ -450,72 +469,51 @@
       color: var(--accent-gold);
     }
 
-    .app-tab-btn.admin-tab.active {
-      background: linear-gradient(135deg, #d97706, #b45309);
-      border-color: #f59e0b;
+    .app-tab-btn.admin-tab:hover {
+      background: rgba(245, 158, 11, 0.1);
+      border-color: var(--accent-gold);
       color: #fff;
-      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35);
     }
 
-    /* Search & Filter Bar */
+    .app-tab-btn.admin-tab.active {
+      background: linear-gradient(135deg, #d97706, #b45309) !important;
+      border-color: #f59e0b !important;
+      color: #fff !important;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35) !important;
+    }
+
     .search-bar-wrapper {
-      max-width: 600px;
-      margin: 0 auto 36px;
+      max-width: 500px;
+      margin: 0 auto 30px;
       position: relative;
+    }
+
+    .search-bar-wrapper i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
     }
 
     .search-bar-wrapper input {
       width: 100%;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 14px 20px 14px 46px;
-      border-radius: 50px;
-      font-size: 15px;
+      color: #fff;
+      padding: 12px 16px 12px 44px;
+      border-radius: 30px;
+      font-size: 14px;
       outline: none;
       transition: var(--transition);
-      box-shadow: var(--shadow);
     }
 
     .search-bar-wrapper input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.2);
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
     }
 
-    .search-bar-wrapper i {
-      position: absolute;
-      left: 18px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-dim);
-      font-size: 16px;
-    }
-
-    /* Grid de Filmes */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-    }
-
-    .section-title {
-      font-size: 22px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .badge-count {
-      background: var(--border-color);
-      color: var(--text-main);
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
+    /* Grid & Cards de Filmes */
     .movies-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -629,12 +627,7 @@
       transition: var(--transition);
     }
 
-    .btn-fav:hover {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    .btn-fav.active {
+    .btn-fav:hover, .btn-fav.active {
       background: var(--accent);
       color: #fff;
     }
@@ -664,7 +657,6 @@
     .inline-comment-form {
       margin-top: 10px;
       display: none;
-      animation: fadeIn 0.2s ease;
     }
 
     .inline-comment-form.open {
@@ -685,10 +677,6 @@
       margin-bottom: 6px;
     }
 
-    .inline-comment-form textarea:focus {
-      border-color: var(--accent-blue);
-    }
-
     .btn-send-comment {
       width: 100%;
       background: var(--accent-blue);
@@ -700,10 +688,6 @@
       font-weight: 700;
       cursor: pointer;
       transition: var(--transition);
-    }
-
-    .btn-send-comment:hover {
-      background: #2563eb;
     }
 
     /* Comentários Section */
@@ -729,17 +713,19 @@
       border-color: #3b82f6;
     }
 
-    .comment-icon {
+    .comment-avatar {
       width: 44px;
       height: 44px;
-      background: rgba(59, 130, 246, 0.15);
-      color: var(--accent-blue);
       border-radius: 50%;
+      background: #1e293b;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
       flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
     }
 
     .comment-content {
@@ -750,14 +736,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .comment-author-info {
-      display: flex;
-      align-items: center;
       gap: 8px;
     }
 
@@ -774,6 +754,7 @@
       background: rgba(245, 158, 11, 0.1);
       padding: 2px 8px;
       border-radius: 4px;
+      margin-left: 6px;
     }
 
     .comment-date {
@@ -786,12 +767,6 @@
       color: var(--text-main);
       line-height: 1.5;
       margin-bottom: 10px;
-    }
-
-    .comment-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
     }
 
     .btn-delete-comment {
@@ -814,24 +789,155 @@
       color: white;
     }
 
-    .btn-delete-comment.admin-mod {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-gold);
-      border-color: rgba(245, 158, 11, 0.35);
+    /* SEÇÃO DE PERFIL SOCIAL DO USUÁRIO */
+    .profile-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow);
     }
 
-    .btn-delete-comment.admin-mod:hover {
-      background: #d97706;
-      color: white;
+    .profile-cover {
+      height: 160px;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a8a 100%);
+      position: relative;
     }
 
-    /* Admin Users Table */
+    .profile-header-content {
+      padding: 0 32px 32px;
+      position: relative;
+      margin-top: -60px;
+      display: flex;
+      gap: 24px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .profile-avatar-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 4px solid var(--bg-card);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .profile-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-avatar-upload-btn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      border: none;
+      padding: 4px 0;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: var(--transition);
+    }
+
+    .profile-avatar-upload-btn:hover {
+      background: var(--accent);
+    }
+
+    .profile-info {
+      flex: 1;
+      padding-top: 60px;
+    }
+
+    .profile-name {
+      font-size: 26px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .profile-email-badge {
+      font-size: 14px;
+      color: #93c5fd;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .profile-bio-box {
+      margin-top: 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 14px;
+      color: var(--text-main);
+      line-height: 1.6;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .profile-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin: 24px 0 40px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-card i {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .val {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .stat-card .lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* Admin Table */
     .admin-table-container {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: var(--shadow);
       margin-bottom: 60px;
     }
 
@@ -839,7 +945,7 @@
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .admin-table th {
@@ -848,110 +954,23 @@
       font-weight: 700;
       padding: 14px 18px;
       border-bottom: 1px solid var(--border-color);
-      font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     .admin-table td {
       padding: 14px 18px;
       border-bottom: 1px solid var(--border-color);
-      color: var(--text-main);
     }
 
-    .admin-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .admin-table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .btn-role-toggle {
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: var(--transition);
-    }
-
-    .btn-promote {
-      background: rgba(245, 158, 11, 0.2);
-      color: var(--accent-gold);
-      border: 1px solid rgba(245, 158, 11, 0.4);
-    }
-
-    .btn-promote:hover {
-      background: var(--accent-gold);
-      color: #000;
-    }
-
-    .btn-demote {
-      background: rgba(59, 130, 246, 0.2);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-    }
-
-    .btn-demote:hover {
-      background: #3b82f6;
-      color: #fff;
-    }
-
-    /* Empty State */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-muted);
-    }
-
-    .empty-state i {
-      font-size: 48px;
-      color: var(--text-dim);
-      margin-bottom: 16px;
-    }
-
-    .empty-state h4 {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 8px;
-    }
-
-    /* Loading Spinner */
-    .spinner {
-      display: inline-block;
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--accent);
-      animation: spin 0.8s linear infinite;
-      margin: 40px auto;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Modal Esqueci Senha */
+    /* Modais */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -965,7 +984,7 @@
       border-radius: 16px;
       padding: 32px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       box-shadow: var(--shadow);
       position: relative;
     }
@@ -981,31 +1000,77 @@
       cursor: pointer;
     }
 
-    .modal-close:hover {
+    /* Toast Notifications */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: #1e293b;
+      border: 1px solid var(--border-color);
       color: #fff;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 280px;
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast.success { border-left: 4px solid var(--accent-green); }
+    .toast.error { border-left: 4px solid var(--accent); }
+    .toast.info { border-left: 4px solid var(--accent-blue); }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 36px;
+      height: 36px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      margin: 40px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     @media (max-width: 640px) {
-      .hero-title { font-size: 26px; }
+      .hero-title { font-size: 24px; }
       .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-      .nav-container { flex-direction: column; gap: 14px; }
-      .auth-card { padding: 28px 20px; }
-      .admin-table th, .admin-table td { padding: 10px 8px; font-size: 12px; }
+      .profile-header-content { padding: 0 16px 20px; flex-direction: column; align-items: center; text-align: center; }
+      .profile-info { padding-top: 10px; }
+      .profile-name { justify-content: center; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Modal Esqueci Minha Senha -->
+  <!-- MODAL: RECUPERAÇÃO DE SENHA -->
   <div id="forgot-modal" class="modal-overlay hidden">
     <div class="modal-content">
-      <button class="modal-close" onclick="fecharModalEsqueci()"><i class="fa-solid fa-xmark"></i></button>
+      <button class="modal-close" onclick="fecharModal('forgot-modal')"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="font-size: 20px; margin-bottom: 10px;"><i class="fa-solid fa-key" style="color: var(--accent-gold); margin-right: 8px;"></i>Recuperar Senha</h3>
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-        Digite seu e-mail cadastrado. Enviaremos um link seguro para você redefinir sua senha.
+        Informe seu e-mail cadastrado. Enviaremos um link para você cadastrar uma nova senha.
       </p>
       <div class="form-group">
         <label>Seu E-mail</label>
@@ -1020,12 +1085,88 @@
     </div>
   </div>
 
-  <!-- SESSÃO DE AUTENTICAÇÃO -->
+  <!-- MODAL: ATIVAÇÃO DE CONTA (Validação de E-mail Real com Código de 6 Dígitos) -->
+  <div id="verify-email-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="fecharModal('verify-email-modal')"><i class="fa-solid fa-xmark"></i></button>
+      <div style="text-align: center; margin-bottom: 16px;">
+        <div class="brand-icon" style="background: linear-gradient(135deg, var(--accent-green), #059669);"><i class="fa-solid fa-envelope-circle-check"></i></div>
+        <h3 style="font-size: 20px; font-weight: 800;">Ativação de Conta</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+          Enviamos um código de segurança de 6 dígitos para o e-mail:<br>
+          <strong id="verify-email-target" style="color: #38bdf8;"></strong>
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label style="text-align: center;">Código de 6 Dígitos</label>
+        <input type="text" id="verify-email-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+      </div>
+
+      <button id="btn-confirm-verify-email" class="btn btn-success" onclick="confirmarAtivacaoEmail()">
+        <i class="fa-solid fa-circle-check"></i> Validar E-mail e Ativar Conta
+      </button>
+
+      <button class="btn btn-outline" style="margin-top: 8px;" onclick="solicitarReenvioCodigo('EMAIL_VERIFICACAO')">
+        <i class="fa-solid fa-rotate-right"></i> Reenviar Código
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: VERIFICAÇÃO EM DUAS ETAPAS (2FA Login OTP) -->
+  <div id="twofa-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="fecharModal('twofa-modal')"><i class="fa-solid fa-xmark"></i></button>
+      <div style="text-align: center; margin-bottom: 16px;">
+        <div class="brand-icon" style="background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3 style="font-size: 20px; font-weight: 800;">Verificação em Duas Etapas</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+          Para garantir a sua privacidade e segurança, digite o código de 6 dígitos enviado para:<br>
+          <strong id="twofa-email-target" style="color: #93c5fd;"></strong>
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label style="text-align: center;">Código de 6 Dígitos (2FA)</label>
+        <input type="text" id="twofa-code" class="form-control otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+      </div>
+
+      <button id="btn-confirm-2fa" class="btn btn-blue" onclick="confirmar2FA()">
+        <i class="fa-solid fa-lock-open"></i> Confirmar e Acessar
+      </button>
+
+      <button class="btn btn-outline" style="margin-top: 8px;" onclick="solicitarReenvioCodigo('LOGIN_2FA')">
+        <i class="fa-solid fa-rotate-right"></i> Reenviar Código de 2 Etapas
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: EDITAR BIOGRAFIA -->
+  <div id="edit-bio-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="fecharModal('edit-bio-modal')"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="font-size: 20px; margin-bottom: 10px;"><i class="fa-solid fa-pen-to-square" style="color: var(--accent-blue); margin-right: 8px;"></i>Editar Perfil</h3>
+      <div class="form-group">
+        <label>Seu Nome de Exibição</label>
+        <input type="text" id="edit-profile-name" class="form-control" placeholder="Seu nome">
+      </div>
+      <div class="form-group">
+        <label>Biografia / Sobre Você</label>
+        <textarea id="edit-profile-bio" class="form-control" style="min-height: 100px; padding: 12px; resize: vertical;" placeholder="Conte sobre sua paixão por cinema e seus filmes favoritos de Tom Hanks..."></textarea>
+      </div>
+      <button id="btn-save-bio" class="btn btn-primary" onclick="salvarBiografia()">
+        <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações
+      </button>
+    </div>
+  </div>
+
+  <!-- SEÇÃO DE AUTENTICAÇÃO -->
   <div id="auth-section" class="auth-wrapper">
     <div class="auth-card">
       <div class="brand">
         <div class="brand-icon"><i class="fa-solid fa-film"></i></div>
-        <div class="brand-title">Tom<span>Hanks</span></div>
+        <div class="brand-title">Tom<span>Hanks</span> Movies</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Rede Social & Catálogo de Cinema</p>
       </div>
 
       <div class="auth-tabs">
@@ -1039,7 +1180,7 @@
           <label>E-mail</label>
           <div class="input-wrapper">
             <i class="fa-solid fa-envelope"></i>
-            <input type="email" id="login-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+            <input type="email" id="login-email" class="form-control" placeholder="seu-email@gmail.com" required>
           </div>
         </div>
 
@@ -1052,37 +1193,37 @@
         </div>
 
         <button type="submit" id="btn-login" class="btn btn-primary">
-          <i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo
+          <i class="fa-solid fa-right-to-bracket"></i> Acessar com 2FA
         </button>
 
-        <button type="button" class="btn-link" onclick="abrirModalEsqueci()">
+        <button type="button" class="btn-link" onclick="abrirModal('forgot-modal')">
           Esqueceu sua senha?
         </button>
       </form>
 
-      <!-- Formulário de Cadastro -->
+      <!-- Formulário de Cadastro com Validação de E-mail Real -->
       <form id="register-form" class="hidden" onsubmit="event.preventDefault(); cadastrar();">
         <div class="form-group">
           <label>Nome Completo</label>
           <div class="input-wrapper">
             <i class="fa-solid fa-user"></i>
-            <input type="text" id="reg-nome" class="form-control" placeholder="Seu nome" required>
+            <input type="text" id="reg-nome" class="form-control" placeholder="Ex: Amabili Flor" required>
           </div>
         </div>
 
         <div class="form-group">
-          <label>E-mail</label>
+          <label>E-mail Real (Será validado via código)</label>
           <div class="input-wrapper">
             <i class="fa-solid fa-envelope"></i>
-            <input type="email" id="reg-email" class="form-control" placeholder="seu-email@exemplo.com" required>
+            <input type="email" id="reg-email" class="form-control" placeholder="seu-email-real@gmail.com" required>
           </div>
         </div>
 
         <div class="form-group">
-          <label>Crie uma Senha</label>
+          <label>Crie uma Senha Segura (mínimo 6 dígitos)</label>
           <div class="input-wrapper">
             <i class="fa-solid fa-lock"></i>
-            <input type="password" id="reg-senha" class="form-control" placeholder="••••••••" required>
+            <input type="password" id="reg-senha" class="form-control" placeholder="••••••••" minlength="6" required>
           </div>
         </div>
 
@@ -1090,7 +1231,7 @@
           <label>Tipo de Conta (Papel RBAC)</label>
           <div class="input-wrapper">
             <i class="fa-solid fa-shield-halved"></i>
-            <select id="reg-role" class="form-control">
+            <select id="reg-role" class="form-control" style="padding-left: 40px;">
               <option value="usuario">Usuário Comum</option>
               <option value="admin">Administrador (Admin)</option>
             </select>
@@ -1098,7 +1239,7 @@
         </div>
 
         <button type="submit" id="btn-register" class="btn btn-success">
-          <i class="fa-solid fa-user-plus"></i> Concluir Cadastro
+          <i class="fa-solid fa-user-plus"></i> Validar E-mail e Criar Conta
         </button>
       </form>
 
@@ -1106,57 +1247,58 @@
     </div>
   </div>
 
-  <!-- SESSÃO PRINCIPAL DO APP -->
+  <!-- SEÇÃO PRINCIPAL DO APP -->
   <div id="app-section" class="hidden">
     <!-- Navbar -->
     <nav class="navbar">
       <div class="container nav-container">
-        <a href="#" class="nav-brand">
+        <div class="nav-brand" onclick="mostrarSecao('todos')">
           <i class="fa-solid fa-film" style="color: var(--accent);"></i>
-          <span>Tom</span>Hanks Movies
-        </a>
+          <span>Tom</span>Hanks
+        </div>
 
-        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-          <a href="/apidocs" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+        <div class="nav-links">
+          <a href="/apidocs" target="_blank" class="nav-link-btn">
             <i class="fa-solid fa-book" style="color: #10b981;"></i> Swagger API
           </a>
-          <a href="/health" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+          <a href="/health" target="_blank" class="nav-link-btn">
             <i class="fa-solid fa-heart-pulse" style="color: #ef4444;"></i> Health
           </a>
-          <a href="/metrics" target="_blank" style="color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;">
+          <a href="/metrics" target="_blank" class="nav-link-btn">
             <i class="fa-solid fa-chart-line" style="color: #3b82f6;"></i> Metrics
           </a>
 
-          <div class="user-profile">
-            <div class="user-badge">
-              <div class="user-avatar" id="user-avatar-char">U</div>
-              <span id="user-display">Carregando...</span>
-              <span class="role-tag" id="role-display">USUÁRIO</span>
-            </div>
-            <button onclick="logout()" class="btn-logout">
-              <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
-            </button>
+          <div class="user-profile-badge" onclick="mostrarSecao('perfil')">
+            <div class="user-avatar-slot" id="user-avatar-slot">U</div>
+            <span id="user-display" style="font-size: 13px; font-weight: 700;">Usuário</span>
+            <span class="role-tag" id="role-display">USUÁRIO</span>
           </div>
+
+          <button onclick="logout()" class="btn-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sair
+          </button>
         </div>
       </div>
     </nav>
 
     <!-- Main Content -->
     <main class="container">
-      <!-- Hero -->
       <section class="hero-banner">
         <h1 class="hero-title">Filmografia Completa</h1>
-        <p class="hero-subtitle">Descubra, favorite e comente todos os sucessos e clássicos estrelados por Tom Hanks.</p>
+        <p class="hero-subtitle">Explore os clássicos inesquecíveis, comente suas impressões e compartilhe seu perfil com outros cinéfilos.</p>
 
-        <!-- Navegação por Abas -->
+        <!-- Navegação de Abas -->
         <div class="app-tabs">
-          <button class="app-tab-btn active" onclick="mostrarSecao('todos', this)">
+          <button id="tab-btn-todos" class="app-tab-btn active" onclick="mostrarSecao('todos', this)">
             <i class="fa-solid fa-clapperboard"></i> Todos os Filmes (<span id="total-movies-badge">0</span>)
           </button>
-          <button class="app-tab-btn" onclick="mostrarSecao('favoritos', this)">
+          <button id="tab-btn-perfil" class="app-tab-btn" onclick="mostrarSecao('perfil', this)">
+            <i class="fa-solid fa-circle-user" style="color: var(--accent-purple);"></i> Meu Perfil Social
+          </button>
+          <button id="tab-btn-favoritos" class="app-tab-btn" onclick="mostrarSecao('favoritos', this)">
             <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Meus Favoritos (<span id="total-favs-badge">0</span>)
           </button>
-          <button class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
+          <button id="tab-btn-comentarios" class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
             <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comunidade (<span id="total-comms-badge">0</span>)
           </button>
           <button id="tab-btn-admin" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('admin', this)">
@@ -1164,52 +1306,107 @@
           </button>
         </div>
 
-        <!-- Barra de Busca Rápida -->
+        <!-- Barra de Busca -->
         <div class="search-bar-wrapper" id="search-container">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="movie-search" placeholder="Pesquisar por título de filme..." oninput="filtrarFilmes()">
+          <input type="text" id="movie-search" placeholder="Pesquisar por título ou personagem..." oninput="filtrarFilmes()">
         </div>
       </section>
 
-      <!-- SEÇÃO 1: TODOS OS FILMES -->
+      <!-- ABA 1: TODOS OS FILMES -->
       <section id="tab-content-todos">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fa-solid fa-film" style="color: var(--accent);"></i> Filmes Disponíveis
-          </h2>
-        </div>
         <div id="movies-list" class="movies-grid">
           <div class="spinner"></div>
         </div>
       </section>
 
-      <!-- SEÇÃO 2: MEUS FAVORITOS -->
-      <section id="tab-content-favoritos" class="hidden">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Filmes Favoritados
-          </h2>
+      <!-- ABA 2: MEU PERFIL SOCIAL (MinIO, Bio, Foto, E-mail & Estatísticas) -->
+      <section id="tab-content-perfil" class="hidden">
+        <div class="profile-card">
+          <div class="profile-cover"></div>
+          <div class="profile-header-content">
+            <div class="profile-avatar-container" id="profile-avatar-container">
+              <span>U</span>
+            </div>
+            
+            <div class="profile-info">
+              <div class="profile-name">
+                <span id="profile-name">Carregando...</span>
+                <span class="role-tag" id="profile-role-tag">USUÁRIO</span>
+                <button class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-flex;" onclick="abrirModalEdicaoBio()">
+                  <i class="fa-solid fa-pen-to-square"></i> Editar Biografia
+                </button>
+                <label for="avatar-file-input" class="btn btn-blue" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-flex; cursor: pointer; margin-top: 0;">
+                  <i class="fa-solid fa-camera"></i> Alterar Foto (MinIO)
+                </label>
+                <input type="file" id="avatar-file-input" accept="image/*" class="hidden" onchange="fazerUploadFotoPerfil(event)">
+                <button id="profile-admin-btn" class="btn btn-outline hidden" style="width: auto; padding: 6px 12px; font-size: 12px; border-color: rgba(245, 158, 11, 0.4); color: var(--accent-gold); display: inline-flex;" onclick="mostrarSecao('admin')">
+                  <i class="fa-solid fa-shield-halved"></i> Painel Admin
+                </button>
+                <button id="profile-elevate-btn" class="btn btn-outline hidden" style="width: auto; padding: 6px 12px; font-size: 12px; border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; display: inline-flex;" onclick="ativarModoAdmin()">
+                  <i class="fa-solid fa-crown"></i> Ativar Modo Admin
+                </button>
+              </div>
+
+              <!-- E-mail Real do Usuário (Atende solicitação do usuário) -->
+              <div class="profile-email-badge">
+                <i class="fa-solid fa-envelope"></i>
+                <span id="profile-email-display">usuario@email.com</span>
+              </div>
+
+              <!-- Biografia -->
+              <div class="profile-bio-box">
+                <div>
+                  <strong style="font-size: 12px; color: var(--text-dim); text-transform: uppercase; display: block; margin-bottom: 4px;">
+                    <i class="fa-solid fa-quote-left"></i> Biografia Cinematográfica
+                  </strong>
+                  <span id="profile-bio-text">Carregando biografia...</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Estatísticas Sociais -->
+        <div class="profile-stats-grid">
+          <div class="stat-card">
+            <i class="fa-solid fa-heart" style="color: var(--accent);"></i>
+            <div class="val" id="profile-stat-favs">0</div>
+            <div class="lbl">Filmes Favoritados</div>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i>
+            <div class="val" id="profile-stat-comms">0</div>
+            <div class="lbl">Comentários Postados</div>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-green);"></i>
+            <div class="val" style="font-size: 16px; margin-top: 6px; color: #10b981;">MinIO Storage</div>
+            <div class="lbl">Fotos em Objeto S3</div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 16px;">
+          <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Minha Galeria de Favoritos
+        </h3>
+        <div id="profile-favs-list" class="movies-grid"></div>
+      </section>
+
+      <!-- ABA 3: MEUS FAVORITOS -->
+      <section id="tab-content-favoritos" class="hidden">
         <div id="favs-list" class="movies-grid"></div>
       </section>
 
-      <!-- SEÇÃO 3: COMENTÁRIOS E MODERAÇÃO RBAC -->
+      <!-- ABA 4: COMENTÁRIOS DA COMUNIDADE -->
       <section id="tab-content-comentarios" class="hidden">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comentários da Comunidade
-          </h2>
-        </div>
         <div id="comments-list" class="comments-list"></div>
       </section>
 
-      <!-- SEÇÃO 4: PAINEL ADMINISTRATIVO (EXCLUSIVO ADMIN) -->
+      <!-- ABA 5: PAINEL DE ADMINISTRAÇÃO & AUDITORIA REDIS -->
       <section id="tab-content-admin" class="hidden">
-        <div class="section-header">
-          <h2 class="section-title">
-            <i class="fa-solid fa-users-gear" style="color: var(--accent-gold);"></i> Gerenciamento de Usuários (Controle RBAC)
-          </h2>
-        </div>
+        <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px;">
+          <i class="fa-solid fa-users-gear" style="color: var(--accent-gold);"></i> Usuários Cadastrados
+        </h3>
         <div class="admin-table-container">
           <table class="admin-table">
             <thead>
@@ -1217,13 +1414,29 @@
                 <th>ID</th>
                 <th>Nome</th>
                 <th>E-mail</th>
-                <th>Papel Atual (Role)</th>
-                <th>Ações de Admin</th>
+                <th>Papel (RBAC)</th>
+                <th>Ações</th>
               </tr>
             </thead>
-            <tbody id="users-table-body">
-              <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando usuários...</td></tr>
-            </tbody>
+            <tbody id="users-table-body"></tbody>
+          </table>
+        </div>
+
+        <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 14px; margin-top: 40px;">
+          <i class="fa-solid fa-list-check" style="color: #ef4444;"></i> Logs de Auditoria (Redis Streams)
+        </h3>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Ação</th>
+                <th>Usuário</th>
+                <th>Detalhes</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body"></tbody>
           </table>
         </div>
       </section>
@@ -1235,8 +1448,9 @@
     let todosFilmes = [];
     let favoritosSet = new Set();
     let mapaFilmes = {};
+    let pendenteEmailAuth = '';
 
-    // Sistema de Notificações Toast
+    // Notificações Toast
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -1245,52 +1459,229 @@
       let icon = '<i class="fa-solid fa-circle-info" style="color: var(--accent-blue);"></i>';
       if (type === 'success') icon = '<i class="fa-solid fa-circle-check" style="color: var(--accent-green);"></i>';
       if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation" style="color: var(--accent);"></i>';
-      if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-gold);"></i>';
 
       toast.innerHTML = `${icon} <span>${message}</span>`;
       container.appendChild(toast);
 
       setTimeout(() => {
         toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
-      }, 4000);
+      }, 4500);
     }
 
-    // Alternar abas de autenticação
+    function abrirModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function fecharModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
     function switchAuthTab(tab) {
-      document.getElementById('auth-msg').innerText = '';
+      document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('auth-msg').style.display = 'none';
+
       if (tab === 'login') {
         document.getElementById('tab-login').classList.add('active');
-        document.getElementById('tab-register').classList.remove('active');
         document.getElementById('login-form').classList.remove('hidden');
         document.getElementById('register-form').classList.add('hidden');
       } else {
         document.getElementById('tab-register').classList.add('active');
-        document.getElementById('tab-login').classList.remove('active');
-        document.getElementById('register-form').classList.remove('hidden');
         document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('register-form').classList.remove('hidden');
       }
     }
 
-    // Modal Esqueci Minha Senha
-    function abrirModalEsqueci() {
-      document.getElementById('forgot-modal').classList.remove('hidden');
-      document.getElementById('forgot-email').value = document.getElementById('login-email').value || '';
+    // ==========================================
+    // FLUXO DE LOGIN & 2FA (Verificação em 2 Etapas)
+    // ==========================================
+    async function login() {
+      const email = document.getElementById('login-email').value.trim();
+      const senha = document.getElementById('login-senha').value;
+      const btn = document.getElementById('btn-login');
+      const authMsg = document.getElementById('auth-msg');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando credenciais...';
+      btn.disabled = true;
+      authMsg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.require2FA) {
+            // Abre Modal de 2FA
+            pendenteEmailAuth = data.email || email;
+            document.getElementById('twofa-email-target').innerText = pendenteEmailAuth;
+            document.getElementById('twofa-code').value = '';
+            abrirModal('twofa-modal');
+            document.getElementById('twofa-code').focus();
+            showToast('Código de 2 etapas enviado para seu e-mail!', 'info');
+          } else {
+            showToast(`Bem-vindo(a), ${data.nome}!`, 'success');
+            carregarDados();
+          }
+        } else if (data.requireVerification) {
+          // Conta pendente de ativação de e-mail
+          pendenteEmailAuth = data.email || email;
+          document.getElementById('verify-email-target').innerText = pendenteEmailAuth;
+          document.getElementById('verify-email-code').value = '';
+          abrirModal('verify-email-modal');
+          showToast(data.error || 'Digite o código enviado para ativar sua conta.', 'info');
+        } else {
+          authMsg.innerText = data.error || 'Credenciais inválidas.';
+          authMsg.style.display = 'block';
+        }
+      } catch (err) {
+        authMsg.innerText = 'Erro ao conectar com o servidor de autenticação.';
+        authMsg.style.display = 'block';
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Acessar com 2FA';
+        btn.disabled = false;
+      }
     }
 
-    function fecharModalEsqueci() {
-      document.getElementById('forgot-modal').classList.add('hidden');
+    async function confirmar2FA() {
+      const codigo = document.getElementById('twofa-code').value.trim();
+      const btn = document.getElementById('btn-confirm-2fa');
+
+      if (!codigo || codigo.length < 6) {
+        return showToast('Por favor, informe o código de 6 dígitos recebido por e-mail.', 'error');
+      }
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando 2FA...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/verify-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendenteEmailAuth, codigo })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          fecharModal('twofa-modal');
+          showToast(`Autenticação em 2 etapas confirmada com sucesso! Bem-vindo(a), ${data.nome}! 🎉`, 'success');
+          carregarDados();
+        } else {
+          showToast(data.error || 'Código de 2 etapas inválido ou expirado.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro ao validar código em duas etapas.', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Confirmar e Acessar';
+        btn.disabled = false;
+      }
+    }
+
+    // ==========================================
+    // FLUXO DE CADASTRO COM VALIDAÇÃO DE E-MAIL REAL
+    // ==========================================
+    async function cadastrar() {
+      const nome = document.getElementById('reg-nome').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const senha = document.getElementById('reg-senha').value;
+      const role = document.getElementById('reg-role').value;
+      const btn = document.getElementById('btn-register');
+      const authMsg = document.getElementById('auth-msg');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando e-mail real...';
+      btn.disabled = true;
+      authMsg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, email, senha, role })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          pendenteEmailAuth = data.email || email;
+          document.getElementById('verify-email-target').innerText = pendenteEmailAuth;
+          document.getElementById('verify-email-code').value = '';
+          abrirModal('verify-email-modal');
+          showToast('Código de ativação enviado para seu e-mail! 📩', 'success');
+        } else {
+          authMsg.innerText = data.error || 'Erro ao realizar cadastro.';
+          authMsg.style.display = 'block';
+        }
+      } catch (err) {
+        authMsg.innerText = 'Erro ao processar cadastro no servidor.';
+        authMsg.style.display = 'block';
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Validar E-mail e Criar Conta';
+        btn.disabled = false;
+      }
+    }
+
+    async function confirmarAtivacaoEmail() {
+      const codigo = document.getElementById('verify-email-code').value.trim();
+      const btn = document.getElementById('btn-confirm-verify-email');
+
+      if (!codigo || codigo.length < 6) {
+        return showToast('Digite o código de 6 dígitos que enviamos para o seu e-mail.', 'error');
+      }
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ativando conta...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/verify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendenteEmailAuth, codigo })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          fecharModal('verify-email-modal');
+          showToast('Conta ativada com sucesso! Faça seu login para continuar. 🎉', 'success');
+          switchAuthTab('login');
+          document.getElementById('login-email').value = pendenteEmailAuth;
+        } else {
+          showToast(data.error || 'Código de ativação incorreto.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro ao validar ativação de e-mail.', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Validar E-mail e Ativar Conta';
+        btn.disabled = false;
+      }
+    }
+
+    async function solicitarReenvioCodigo(tipo) {
+      if (!pendenteEmailAuth) return showToast('E-mail não identificado.', 'error');
+      try {
+        const res = await fetch('/api/resend-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: pendenteEmailAuth, tipo })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Novo código enviado com sucesso para o seu e-mail!', 'success');
+        } else {
+          showToast(data.error || 'Erro ao reenviar código.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação.', 'error');
+      }
     }
 
     async function enviarRecuperacao() {
       const email = document.getElementById('forgot-email').value.trim();
-      if (!email) return showToast('Por favor, informe seu e-mail.', 'error');
-
       const btn = document.getElementById('btn-forgot-send');
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+      if (!email) return showToast('Informe o seu e-mail cadastrado.', 'error');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando link...';
       btn.disabled = true;
 
       try {
@@ -1302,116 +1693,26 @@
         const data = await res.json();
         if (res.ok) {
           showToast(data.message || 'Link de recuperação enviado com sucesso!', 'success');
-          fecharModalEsqueci();
+          fecharModal('forgot-modal');
         } else {
           showToast(data.error || 'Erro ao solicitar recuperação.', 'error');
         }
       } catch (err) {
-        showToast('Erro de conexão com o servidor.', 'error');
+        showToast('Erro de conexão.', 'error');
       } finally {
-        btn.innerHTML = originalText;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Link de Recuperação';
         btn.disabled = false;
       }
     }
 
-    // Login
-    async function login() {
-      const email = document.getElementById('login-email').value.trim();
-      const senha = document.getElementById('login-senha').value;
-      const btn = document.getElementById('btn-login');
-
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, senha })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showToast(`Bem-vindo de volta, ${data.nome}!`, 'success');
-          carregarDados();
-        } else {
-          document.getElementById('auth-msg').innerText = data.error || 'Credenciais inválidas.';
-        }
-      } catch (err) {
-        document.getElementById('auth-msg').innerText = 'Erro ao conectar ao servidor.';
-      } finally {
-        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo';
-        btn.disabled = false;
-      }
-    }
-
-    // Cadastro com Papel (Role)
-    async function cadastrar() {
-      const nome = document.getElementById('reg-nome').value.trim();
-      const email = document.getElementById('reg-email').value.trim();
-      const senha = document.getElementById('reg-senha').value;
-      const role = document.getElementById('reg-role').value;
-      const btn = document.getElementById('btn-register');
-
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando conta...';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nome, email, senha, role })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showToast('Conta criada com sucesso! Enviamos um e-mail de boas-vindas 🎉', 'success');
-          carregarDados();
-        } else {
-          document.getElementById('auth-msg').innerText = data.error || 'Erro ao realizar cadastro.';
-        }
-      } catch (err) {
-        document.getElementById('auth-msg').innerText = 'Erro de comunicação ao cadastrar.';
-      } finally {
-        btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Concluir Cadastro';
-        btn.disabled = false;
-      }
-    }
-
-    // Logout
     async function logout() {
       await fetch('/api/logout', { method: 'POST' });
       location.reload();
     }
 
-    // Navegação de Abas do App
-    function mostrarSecao(secao, btn) {
-      document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-
-      document.getElementById('tab-content-todos').classList.add('hidden');
-      document.getElementById('tab-content-favoritos').classList.add('hidden');
-      document.getElementById('tab-content-comentarios').classList.add('hidden');
-      document.getElementById('tab-content-admin').classList.add('hidden');
-
-      const searchContainer = document.getElementById('search-container');
-      if (secao === 'todos') {
-        document.getElementById('tab-content-todos').classList.remove('hidden');
-        searchContainer.classList.remove('hidden');
-      } else if (secao === 'favoritos') {
-        document.getElementById('tab-content-favoritos').classList.remove('hidden');
-        searchContainer.classList.add('hidden');
-        carregarFavoritos();
-      } else if (secao === 'comentarios') {
-        document.getElementById('tab-content-comentarios').classList.remove('hidden');
-        searchContainer.classList.add('hidden');
-        carregarComentarios();
-      } else if (secao === 'admin') {
-        document.getElementById('tab-content-admin').classList.remove('hidden');
-        searchContainer.classList.add('hidden');
-        carregarUsuariosAdmin();
-      }
-    }
-
-    // Carregamento Inicial do Usuário e Filmes
+    // ==========================================
+    // CARREGAMENTO DE DADOS & SESSÃO PRINCIPAL
+    // ==========================================
     async function carregarDados() {
       try {
         const meRes = await fetch('/api/me');
@@ -1425,57 +1726,250 @@
         document.getElementById('auth-section').classList.add('hidden');
         document.getElementById('app-section').classList.remove('hidden');
 
+        // Atualiza Navbar
         document.getElementById('user-display').innerText = usuarioAtual.nome;
-        document.getElementById('user-avatar-char').innerText = usuarioAtual.nome.charAt(0).toUpperCase();
-        
         const roleBadge = document.getElementById('role-display');
         roleBadge.innerText = (usuarioAtual.role || 'usuario').toUpperCase();
         roleBadge.className = `role-tag ${usuarioAtual.role || 'usuario'}`;
 
-        // Se for admin, exibe a aba de administração
+        if (usuarioAtual.foto_url) {
+          document.getElementById('user-avatar-slot').innerHTML = `<img src="${usuarioAtual.foto_url}?t=${Date.now()}" class="user-avatar-img" alt="Foto">`;
+        } else {
+          document.getElementById('user-avatar-slot').innerText = usuarioAtual.nome.charAt(0).toUpperCase();
+        }
+
+        // Se for admin, exibe aba de administração
         const adminTab = document.getElementById('tab-btn-admin');
+        const profileAdminBtn = document.getElementById('profile-admin-btn');
+        const profileElevateBtn = document.getElementById('profile-elevate-btn');
+
         if (usuarioAtual.role === 'admin') {
           adminTab.classList.remove('hidden');
+          if (profileAdminBtn) profileAdminBtn.classList.remove('hidden');
+          if (profileElevateBtn) profileElevateBtn.classList.add('hidden');
           carregarContadorUsuarios();
         } else {
           adminTab.classList.add('hidden');
+          if (profileAdminBtn) profileAdminBtn.classList.add('hidden');
+          if (profileElevateBtn) profileElevateBtn.classList.remove('hidden');
         }
 
-        // Carregar Favoritos primeiro para sincronizar os botões
         await carregarFavoritos();
         await carregarFilmes();
         await carregarComentarios();
+        await carregarPerfil();
       } catch (err) {
         document.getElementById('auth-section').classList.remove('hidden');
         document.getElementById('app-section').classList.add('hidden');
       }
     }
 
-    // Carregar Filmes do TMDB
+    // Ativação de Administrador (Recovery / Self-Promotion)
+    async function ativarModoAdmin() {
+      if (!confirm('Deseja ativar privilégios de Administrador para sua conta?')) return;
+      try {
+        const res = await fetch('/api/me/elevate-admin', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Promovido a Administrador com sucesso! 👑', 'success');
+          await carregarDados();
+          mostrarSecao('admin');
+        } else {
+          showToast(data.error || 'Erro ao ativar modo administrador.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação ao ativar modo administrador.', 'error');
+      }
+    }
+
+    // Navegação entre Abas
+    function mostrarSecao(secao, btn) {
+      document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
+      const targetBtn = btn || document.getElementById(`tab-btn-${secao}`);
+      if (targetBtn) targetBtn.classList.add('active');
+
+      document.getElementById('tab-content-todos').classList.add('hidden');
+      document.getElementById('tab-content-perfil').classList.add('hidden');
+      document.getElementById('tab-content-favoritos').classList.add('hidden');
+      document.getElementById('tab-content-comentarios').classList.add('hidden');
+      document.getElementById('tab-content-admin').classList.add('hidden');
+
+      const searchContainer = document.getElementById('search-container');
+
+      if (secao === 'todos') {
+        document.getElementById('tab-content-todos').classList.remove('hidden');
+        searchContainer.classList.remove('hidden');
+      } else if (secao === 'perfil') {
+        document.getElementById('tab-content-perfil').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarPerfil();
+      } else if (secao === 'favoritos') {
+        document.getElementById('tab-content-favoritos').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarFavoritos();
+      } else if (secao === 'comentarios') {
+        document.getElementById('tab-content-comentarios').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarComentarios();
+      } else if (secao === 'admin') {
+        document.getElementById('tab-content-admin').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarUsuariosAdmin();
+        carregarLogsAuditoria();
+      }
+    }
+
+    // ==========================================
+    // PERFIL SOCIAL DO USUÁRIO & MINIO
+    // ==========================================
+    async function carregarPerfil() {
+      try {
+        const res = await fetch('/api/profile');
+        if (!res.ok) return;
+        const perfil = await res.json();
+
+        // Nome & E-mail Real (atende exatamente o que o usuário solicitou)
+        document.getElementById('profile-name').innerText = perfil.nome || usuarioAtual.nome;
+        document.getElementById('profile-email-display').innerText = perfil.email || usuarioAtual.email;
+        
+        const roleTag = document.getElementById('profile-role-tag');
+        roleTag.innerText = (perfil.role || 'usuario').toUpperCase();
+        roleTag.className = `role-tag ${perfil.role || 'usuario'}`;
+
+        document.getElementById('profile-bio-text').innerText = perfil.bio || 'Adorador de cinema e dos grandes clássicos de Tom Hanks!';
+        document.getElementById('profile-stat-favs').innerText = perfil.total_favoritos || 0;
+        document.getElementById('profile-stat-comms').innerText = perfil.total_comentarios || 0;
+
+        // Avatar do MinIO
+        const avatarContainer = document.getElementById('profile-avatar-container');
+        if (perfil.foto_url) {
+          avatarContainer.innerHTML = `<img src="${perfil.foto_url}?t=${Date.now()}" class="profile-avatar-img" alt="Foto de perfil">`;
+        } else {
+          avatarContainer.innerHTML = `<span>${(perfil.nome || 'U').charAt(0).toUpperCase()}</span>`;
+        }
+
+        // Galeria de Favoritos no Perfil
+        const favsContainer = document.getElementById('profile-favs-list');
+        if (!perfil.favoritos || perfil.favoritos.length === 0) {
+          favsContainer.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-muted);">
+              <i class="fa-regular fa-heart" style="font-size: 36px; margin-bottom: 12px; color: var(--text-dim); display: block;"></i>
+              Você ainda não favoritou nenhum filme. Explore o catálogo e salve seus favoritos!
+            </div>
+          `;
+        } else {
+          favsContainer.innerHTML = perfil.favoritos.map(f => {
+            const posterUrl = f.poster_path ? `https://image.tmdb.org/t/p/w500${f.poster_path}` : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
+            return `
+              <div class="movie-card">
+                <div class="poster-container">
+                  <img src="${posterUrl}" alt="${f.titulo}" loading="lazy" />
+                </div>
+                <div class="movie-body">
+                  <h4 class="movie-title">${f.titulo}</h4>
+                  <div class="card-actions">
+                    <button class="btn-fav active" style="cursor: default;">
+                      <i class="fa-solid fa-heart"></i> Favorito
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Erro ao carregar perfil:', err);
+      }
+    }
+
+    function abrirModalEdicaoBio() {
+      document.getElementById('edit-profile-name').value = document.getElementById('profile-name').innerText;
+      document.getElementById('edit-profile-bio').value = document.getElementById('profile-bio-text').innerText;
+      abrirModal('edit-bio-modal');
+    }
+
+    async function salvarBiografia() {
+      const nome = document.getElementById('edit-profile-name').value.trim();
+      const bio = document.getElementById('edit-profile-bio').value.trim();
+      const btn = document.getElementById('btn-save-bio');
+
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, bio })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          fecharModal('edit-bio-modal');
+          showToast('Biografia atualizada com sucesso! ✍️', 'success');
+          carregarDados();
+        } else {
+          showToast(data.error || 'Erro ao salvar biografia.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação.', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações';
+        btn.disabled = false;
+      }
+    }
+
+    async function fazerUploadFotoPerfil(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        return showToast('O arquivo excede o tamanho máximo permitido de 5MB.', 'error');
+      }
+
+      const formData = new FormData();
+      formData.append('foto', file);
+
+      showToast('Enviando imagem para o Object Storage MinIO...', 'info');
+
+      try {
+        const res = await fetch('/api/profile/upload-photo', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast('Foto de perfil salva com sucesso no MinIO! 📸', 'success');
+          carregarDados();
+        } else {
+          showToast(data.error || 'Erro ao enviar foto.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação ao fazer upload da imagem.', 'error');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    // ==========================================
+    // FILMES, FAVORITOS & COMENTÁRIOS
+    // ==========================================
     async function carregarFilmes() {
       try {
         const mRes = await fetch('/api/movies');
         todosFilmes = await mRes.json();
-        
-        // Mapeia filmes para busca rápida
-        todosFilmes.forEach(f => {
-          mapaFilmes[f.id] = f.title;
-        });
-
+        todosFilmes.forEach(f => { mapaFilmes[f.id] = f.title; });
         document.getElementById('total-movies-badge').innerText = todosFilmes.length;
         renderizarFilmes(todosFilmes);
       } catch (err) {
         document.getElementById('movies-list').innerHTML = `
-          <div class="empty-state">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <h4>Erro ao carregar filmes</h4>
-            <p>Não foi possível carregar a lista de filmes no momento.</p>
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
+            Erro ao carregar catálogo de filmes.
           </div>
         `;
       }
     }
 
-    // Filtrar filmes em tempo real
     function filtrarFilmes() {
       const query = document.getElementById('movie-search').value.toLowerCase().trim();
       const filtrados = todosFilmes.filter(m => 
@@ -1485,26 +1979,16 @@
       renderizarFilmes(filtrados);
     }
 
-    // Renderizar Cards de Filmes
     function renderizarFilmes(filmes) {
       const container = document.getElementById('movies-list');
       if (filmes.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
-            <i class="fa-solid fa-film"></i>
-            <h4>Nenhum filme encontrado</h4>
-            <p>Tente buscar por outro termo.</p>
-          </div>
-        `;
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Nenhum filme encontrado.</div>`;
         return;
       }
 
       container.innerHTML = filmes.map(m => {
         const isFav = favoritosSet.has(m.id);
-        const posterUrl = m.poster_path 
-          ? `https://image.tmdb.org/t/p/w500${m.poster_path}`
-          : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
-        
+        const posterUrl = m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
         const ano = m.release_date ? m.release_date.substring(0, 4) : 'N/D';
         const nota = m.vote_average ? m.vote_average.toFixed(1) : null;
         const safeTitle = (m.title || '').replace(/'/g, "\\'");
@@ -1526,13 +2010,11 @@
                 <button class="btn-fav ${isFav ? 'active' : ''}" onclick="toggleFavorito(${m.id}, '${safeTitle}', '${m.poster_path || ''}')">
                   <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart"></i> ${isFav ? 'Favoritado' : 'Favoritar'}
                 </button>
-
                 <button class="comment-box-toggle" onclick="toggleCommentBox(${m.id})">
                   <i class="fa-regular fa-comment-dots"></i> Deixar Comentário
                 </button>
-
                 <div id="comment-box-${m.id}" class="inline-comment-form">
-                  <textarea id="comm-input-${m.id}" placeholder="Escreva sua opinião sobre este filme..."></textarea>
+                  <textarea id="comm-input-${m.id}" placeholder="Escreva sua opinião..."></textarea>
                   <button class="btn-send-comment" onclick="enviarComentario(${m.id})">
                     <i class="fa-solid fa-paper-plane"></i> Publicar
                   </button>
@@ -1544,16 +2026,14 @@
       }).join('');
     }
 
-    // Toggle Formulário de Comentário Inline
-    function toggleCommentBox(movieId) {
-      const box = document.getElementById(`comment-box-${movieId}`);
+    function toggleCommentBox(id) {
+      const box = document.getElementById(`comment-box-${id}`);
       box.classList.toggle('open');
       if (box.classList.contains('open')) {
-        document.getElementById(`comm-input-${movieId}`).focus();
+        document.getElementById(`comm-input-${id}`).focus();
       }
     }
 
-    // Favoritar Filme
     async function toggleFavorito(tmdb_movie_id, titulo, poster_path) {
       try {
         const res = await fetch('/api/favorites', {
@@ -1574,32 +2054,21 @@
       }
     }
 
-    // Carregar Favoritos
     async function carregarFavoritos() {
       try {
         const res = await fetch('/api/favorites');
         const favs = await res.json();
-        
         favoritosSet = new Set(favs.map(f => f.tmdb_movie_id));
         document.getElementById('total-favs-badge').innerText = favs.length;
 
         const container = document.getElementById('favs-list');
         if (favs.length === 0) {
-          container.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1;">
-              <i class="fa-regular fa-heart"></i>
-              <h4>Nenhum filme favoritado ainda</h4>
-              <p>Explore a lista de filmes e clique em "Favoritar" para salvar seus preferidos!</p>
-            </div>
-          `;
+          container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Nenhum favorito ainda.</div>`;
           return;
         }
 
         container.innerHTML = favs.map(f => {
-          const posterUrl = f.poster_path 
-            ? `https://image.tmdb.org/t/p/w500${f.poster_path}`
-            : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
-
+          const posterUrl = f.poster_path ? `https://image.tmdb.org/t/p/w500${f.poster_path}` : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
           return `
             <div class="movie-card">
               <div class="poster-container">
@@ -1616,16 +2085,13 @@
             </div>
           `;
         }).join('');
-      } catch (err) {
-        console.error('Erro ao carregar favoritos:', err);
-      }
+      } catch (err) {}
     }
 
-    // Enviar Comentário
     async function enviarComentario(tmdb_movie_id) {
       const input = document.getElementById(`comm-input-${tmdb_movie_id}`);
       const texto = input.value.trim();
-      if (!texto) return showToast('Escreva algo antes de enviar o comentário.', 'error');
+      if (!texto) return showToast('Digite um comentário.', 'error');
 
       try {
         const res = await fetch('/api/comments', {
@@ -1636,115 +2102,83 @@
         if (res.ok) {
           input.value = '';
           toggleCommentBox(tmdb_movie_id);
-          showToast('Comentário publicado com sucesso! 💬', 'success');
+          showToast('Comentário publicado! 💬', 'success');
           carregarComentarios();
         } else {
-          showToast('Erro ao publicar comentário.', 'error');
+          showToast('Erro ao comentar.', 'error');
         }
       } catch (err) {
         showToast('Erro de comunicação.', 'error');
       }
     }
 
-    // Carregar Comentários da Comunidade
     async function carregarComentarios() {
       try {
         const res = await fetch('/api/comments');
         const comms = await res.json();
-        
         document.getElementById('total-comms-badge').innerText = comms.length;
         const container = document.getElementById('comments-list');
-        
+
         if (comms.length === 0) {
-          container.innerHTML = `
-            <div class="empty-state">
-              <i class="fa-regular fa-comments"></i>
-              <h4>Nenhum comentário registrado</h4>
-              <p>Compartilhe suas impressões e análises sobre os filmes de Tom Hanks!</p>
-            </div>
-          `;
+          container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted);">Nenhum comentário registrado ainda.</div>`;
           return;
         }
 
         container.innerHTML = comms.map(c => {
           const nomeFilme = mapaFilmes[c.tmdb_movie_id] || `Filme #${c.tmdb_movie_id}`;
-          const dataFormatada = c.criado_em 
-            ? new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-            : 'Recentemente';
-
           const isOwner = usuarioAtual && (usuarioAtual.id === c.usuario_id);
           const isAdmin = usuarioAtual && (usuarioAtual.role === 'admin');
 
           let deleteBtnHtml = '';
           if (isOwner) {
-            deleteBtnHtml = `
-              <button class="btn-delete-comment" onclick="excluirComentario(${c.id})">
-                <i class="fa-solid fa-trash-can"></i> Excluir meu comentário
-              </button>
-            `;
+            deleteBtnHtml = `<button class="btn-delete-comment" onclick="excluirComentario(${c.id})"><i class="fa-solid fa-trash-can"></i> Excluir meu comentário</button>`;
           } else if (isAdmin) {
-            deleteBtnHtml = `
-              <button class="btn-delete-comment admin-mod" onclick="excluirComentario(${c.id})">
-                <i class="fa-solid fa-shield-halved"></i> Moderar / Excluir (Admin)
-              </button>
-            `;
+            deleteBtnHtml = `<button class="btn-delete-comment" style="background: rgba(245,158,11,0.2); color: var(--accent-gold); border-color: rgba(245,158,11,0.4);" onclick="excluirComentario(${c.id})"><i class="fa-solid fa-shield-halved"></i> Moderar (Admin)</button>`;
           }
 
-          const autorTag = (c.autor_role === 'admin') 
-            ? '<span class="role-tag admin" style="font-size: 10px; margin-left: 6px;">ADMIN</span>' 
-            : '';
+          const avatarHtml = c.autor_foto_url 
+            ? `<img src="${c.autor_foto_url}" class="user-avatar-img" alt="Avatar">`
+            : (c.autor_nome || 'U').charAt(0).toUpperCase();
 
           return `
-            <div class="comment-item" id="comment-card-${c.id}">
-              <div class="comment-icon">
-                <i class="fa-solid fa-quote-left"></i>
-              </div>
+            <div class="comment-item">
+              <div class="comment-avatar">${avatarHtml}</div>
               <div class="comment-content">
                 <div class="comment-header">
-                  <div class="comment-author-info">
+                  <div>
                     <span class="comment-author-name">${c.autor_nome || 'Usuário'}</span>
-                    ${autorTag}
                     <span class="comment-movie-tag"><i class="fa-solid fa-film"></i> ${nomeFilme}</span>
                   </div>
-                  <span class="comment-date">${dataFormatada}</span>
+                  <span class="comment-date">${c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR') : ''}</span>
                 </div>
                 <p class="comment-text">${c.texto}</p>
-                <div class="comment-actions">
-                  ${deleteBtnHtml}
-                </div>
+                ${deleteBtnHtml}
               </div>
             </div>
           `;
         }).join('');
-      } catch (err) {
-        console.error('Erro ao carregar comentários:', err);
-      }
+      } catch (err) {}
     }
 
-    // Excluir Comentário (RBAC Enforcement)
-    async function excluirComentario(commentId) {
-      if (!confirm('Deseja realmente excluir este comentário?')) return;
-
+    async function excluirComentario(id) {
+      if (!confirm('Deseja excluir este comentário?')) return;
       try {
-        const res = await fetch(`/api/comments/${commentId}`, {
-          method: 'DELETE'
-        });
+        const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
         const data = await res.json();
-
         if (res.ok) {
-          showToast(data.message || 'Comentário removido com sucesso!', 'success');
+          showToast(data.message || 'Comentário excluído!', 'success');
           carregarComentarios();
-        } else if (res.status === 403) {
-          showToast(`❌ ${data.error || 'Acesso negado: 403 Forbidden.'}`, 'error');
         } else {
-          showToast(data.error || 'Erro ao excluir comentário.', 'error');
+          showToast(data.error || 'Erro ao excluir.', 'error');
         }
       } catch (err) {
-        showToast('Erro de comunicação ao excluir comentário.', 'error');
+        showToast('Erro ao comunicar com o servidor.', 'error');
       }
     }
 
-    // Carregar Contador de Usuários no Painel Admin
+    // ==========================================
+    // PAINEL DE ADMINISTRAÇÃO & AUDITORIA REDIS
+    // ==========================================
     async function carregarContadorUsuarios() {
       try {
         const res = await fetch('/api/users');
@@ -1755,7 +2189,6 @@
       } catch (err) {}
     }
 
-    // Carregar Lista de Usuários no Painel Admin
     async function carregarUsuariosAdmin() {
       const tbody = document.getElementById('users-table-body');
       tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
@@ -1763,61 +2196,40 @@
       try {
         const res = await fetch('/api/users');
         if (!res.ok) {
-          const errData = await res.json();
-          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">${errData.error || 'Acesso negado.'}</td></tr>`;
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Acesso negado.</td></tr>';
           return;
         }
 
         const users = await res.json();
         document.getElementById('total-users-badge').innerText = users.length;
 
-        if (users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum usuário cadastrado.</td></tr>';
-          return;
-        }
-
         tbody.innerHTML = users.map(u => {
-          const isUserAdmin = (u.role === 'admin');
           const isSelf = usuarioAtual && (usuarioAtual.id === u.id);
+          const isUserAdmin = (u.role === 'admin');
 
-          let actionBtn = '';
-          if (isSelf) {
-            actionBtn = '<span style="color: var(--text-dim); font-size: 12px;">Sua conta</span>';
-          } else if (isUserAdmin) {
-            actionBtn = `
-              <button class="btn-role-toggle btn-demote" onclick="alterarPapelUsuario(${u.id}, 'usuario')">
-                <i class="fa-solid fa-arrow-down"></i> Rebaixar a Usuário
-              </button>
-            `;
-          } else {
-            actionBtn = `
-              <button class="btn-role-toggle btn-promote" onclick="alterarPapelUsuario(${u.id}, 'admin')">
-                <i class="fa-solid fa-crown"></i> Promover a Admin
-              </button>
-            `;
-          }
+          let actionBtn = isSelf 
+            ? '<span style="color: var(--text-dim);">Sua conta</span>'
+            : isUserAdmin
+              ? `<button class="btn btn-outline" style="width: auto; padding: 4px 8px; font-size: 11px;" onclick="alterarPapelUsuario(${u.id}, 'usuario')">Rebaixar a Usuário</button>`
+              : `<button class="btn btn-outline" style="width: auto; padding: 4px 8px; font-size: 11px; color: var(--accent-gold); border-color: rgba(245,158,11,0.4);" onclick="alterarPapelUsuario(${u.id}, 'admin')">Promover a Admin</button>`;
 
           return `
             <tr>
               <td><strong>#${u.id}</strong></td>
               <td>${u.nome}</td>
               <td>${u.email}</td>
-              <td>
-                <span class="role-tag ${u.role}">${(u.role || 'usuario').toUpperCase()}</span>
-              </td>
+              <td><span class="role-tag ${u.role}">${(u.role || 'usuario').toUpperCase()}</span></td>
               <td>${actionBtn}</td>
             </tr>
           `;
         }).join('');
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">Erro ao carregar lista de usuários.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Erro ao carregar lista.</td></tr>';
       }
     }
 
-    // Alterar Papel de Usuário (Admin Action)
     async function alterarPapelUsuario(userId, novoPapel) {
-      if (!confirm(`Deseja alterar o papel deste usuário para "${novoPapel}"?`)) return;
-
+      if (!confirm(`Deseja alterar o papel para "${novoPapel}"?`)) return;
       try {
         const res = await fetch(`/api/users/${userId}/role`, {
           method: 'PATCH',
@@ -1825,19 +2237,54 @@
           body: JSON.stringify({ role: novoPapel })
         });
         const data = await res.json();
-
         if (res.ok) {
-          showToast(`Papel atualizado para ${novoPapel.toUpperCase()} com sucesso!`, 'success');
+          showToast(`Papel atualizado com sucesso!`, 'success');
           carregarUsuariosAdmin();
         } else {
           showToast(data.error || 'Erro ao alterar papel.', 'error');
         }
       } catch (err) {
-        showToast('Erro de comunicação ao alterar papel.', 'error');
+        showToast('Erro de comunicação.', 'error');
       }
     }
 
-    // Inicialização ao abrir a página
+    async function carregarLogsAuditoria() {
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
+
+      try {
+        const res = await fetch('/api/admin/logs?limit=50');
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Acesso restrito a administradores.</td></tr>';
+          return;
+        }
+
+        const logs = await res.json();
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum log registrado ainda.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = logs.map(l => {
+          const dataFormatada = l.timestamp ? new Date(l.timestamp).toLocaleString('pt-BR') : '-';
+          const detalhesStr = typeof l.detalhes === 'object' ? JSON.stringify(l.detalhes) : (l.detalhes || '-');
+
+          return `
+            <tr>
+              <td style="font-family: monospace; font-size: 11px; color: var(--text-dim);">${dataFormatada}</td>
+              <td><span class="role-tag admin" style="font-size: 10px;">${l.acao}</span></td>
+              <td><strong>#${l.usuario_id}</strong> ${l.usuario_nome ? `(${l.usuario_nome})` : ''}</td>
+              <td style="font-family: monospace; font-size: 11px; color: #93c5fd; max-width: 300px; word-break: break-all;">${detalhesStr}</td>
+              <td style="font-family: monospace; font-size: 11px; color: var(--text-dim);">${l.ip || '127.0.0.1'}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171;">Erro ao carregar logs.</td></tr>';
+      }
+    }
+
+    // Início
     carregarDados();
   </script>
 </body>
