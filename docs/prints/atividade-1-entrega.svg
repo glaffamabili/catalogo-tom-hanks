@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="400" viewBox="0 0 900 400">
+  <rect width="900" height="400" rx="10" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <rect width="900" height="40" rx="10" fill="#161b22"/>
+  <circle cx="24" cy="20" r="6" fill="#ff5f56"/><circle cx="44" cy="20" r="6" fill="#ffbd2e"/><circle cx="64" cy="20" r="6" fill="#27c93f"/>
+  <text x="100" y="25" fill="#8b949e" font-family="monospace" font-size="13">Terminal — Fatec Pompeia — Aula Prática de Nivelamento (07/08/2026 11:30)</text>
+  
+  <rect x="24" y="56" width="852" height="320" rx="8" fill="#000000" stroke="#30363d" stroke-width="1"/>
+  <text x="44" y="90" fill="#3fb950" font-family="monospace" font-size="13">amabili@fatec-lab:~/isw055-agenda$ python3 app.py</text>
+  <text x="44" y="116" fill="#58a6ff" font-family="monospace" font-size="13"> * Serving Flask app 'app'</text>
+  <text x="44" y="138" fill="#58a6ff" font-family="monospace" font-size="13"> * Debug mode: on</text>
+  <text x="44" y="160" fill="#c9d1d9" font-family="monospace" font-size="13"> * Running on http://127.0.0.1:5000 (Press CTRL+C to quit)</text>
+  <text x="44" y="186" fill="#8b949e" font-family="monospace" font-size="13">127.0.0.1 - - [07/Aug/2026 11:30:14] "GET / HTTP/1.1" 200 -</text>
+  <text x="44" y="208" fill="#8b949e" font-family="monospace" font-size="13">127.0.0.1 - - [07/Aug/2026 11:30:45] "POST /adicionar HTTP/1.1" 302 -</text>
+  <text x="44" y="234" fill="#3fb950" font-family="monospace" font-size="13">Persistência local: contatos.json carregado com 10 registros com sucesso.</text>
+  <text x="44" y="260" fill="#d29922" font-family="monospace" font-size="13">Evidência: Atividade individual realizada em sala de aula na Fatec Pompeia.</text>
+</svg>
