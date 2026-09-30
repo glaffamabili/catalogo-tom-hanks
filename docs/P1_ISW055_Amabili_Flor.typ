@@ -180,7 +180,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Construção da primeira versão do catálogo cinematográfico em Node.js e Express, integrando-se à API RESTful do The Movie Database (TMDB) para carregar dinamicamente a filmografia completa do ator Tom Hanks. Foi implementado o banco relacional MariaDB para persistência de favoritos segregados por usuário e listagem em grade responsiva com pôsteres e avaliações.
 
   #evidencia([Atividade 2 — Evidência do commit b61415d no GitHub com data/hora e repositório], arquivo: "prints/atividade-2-entrega.svg")
-  #evidencia([Atividade 2 — Resultado do sistema (Catálogo de filmes e favoritos no MariaDB)], arquivo: "prints/atividade-2-resultado.svg")
+  #evidencia([Atividade 2 — Resultado real do sistema (Catálogo com filmografia e vitrine de favoritos no MariaDB)], arquivo: "prints/atividade-2-resultado.png")
 
   *Dificuldades e resolução.* A proteção da chave privada de API do TMDB foi o ponto crítico, resolvida pela segregação da chave em variáveis de ambiente (`.env` e Docker Compose), evitando vazamento de credenciais no código-fonte.
 ]
@@ -214,7 +214,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Implementação do modelo de controle de acesso baseado em papel (RBAC) com validação estrita no servidor (Padrão A Centralizado). O sistema estabeleceu os papéis `usuario` e `admin`, restringindo a moderação de comentários de terceiros, a consulta à lista de usuários e a alteração de privilégios com o retorno estrito de `HTTP 403 Forbidden` no backend para usuários não autorizados.
 
   #evidencia([Atividade 4 — Evidência do commit 21f3b2b no GitHub com regras RBAC], arquivo: "prints/atividade-4-entrega.svg")
-  #evidencia([Atividade 4 — Resultado real do sistema (Formulário de cadastro com seleção de papel RBAC Administrador / Usuário Comum)], arquivo: "prints/atividade-4-resultado.png")
+  #evidencia([Atividade 4 — Resultado real do sistema (Formulário de cadastro com seleção de papéis RBAC no servidor)], arquivo: "prints/atividade-4-resultado.png")
 
   *Dificuldades e resolução.* Eliminar qualquer dependência de validações client-side no frontend, garantindo que o backend fizesse a checagem em tempo real junto ao `auth-service` para cada ação protegida.
 ]
@@ -248,7 +248,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Transformação do catálogo em uma rede social cinematográfica completa. Implementação de upload de imagens de avatar direcionadas ao *MinIO Object Storage* (`cgr.dev/chainguard/minio:latest`), gravando apenas a chave de referência no MariaDB e servindo as imagens por streaming reverso com cache HTTP (`Cache-Control: 86400`). A página de perfil passou a exibir nome, e-mail real do usuário, biografia editável, estatísticas de engajamento e vitrine de favoritos. Adicionalmente, implementou-se autenticação em duas etapas (2FA via e-mail OTP) e validação de e-mails reais com checagem DNS MX.
 
   #evidencia([Atividade 6 — Evidência do commit 98b334a no GitHub com MinIO Object Storage e 2FA], arquivo: "prints/atividade-6-entrega.svg")
-  #evidencia([Atividade 6 — Resultado real do sistema (Página de perfil social com foto no MinIO, bio 'SLA', e-mail real e galeria de favoritos)], arquivo: "prints/atividade-6-resultado.png")
+  #evidencia([Atividade 6 — Resultado real do sistema (Perfil social com foto no MinIO Object Storage, bio, e-mail real e favoritos)], arquivo: "prints/atividade-6-resultado.png")
 
   *Dificuldades e resolução.* Substituição da imagem MinIO do Docker Hub por uma imagem pública aberta e segura da Chainguard para contornar restrições de pull no Portainer, além de implementar entrega reversa das fotos mantendo o MinIO isolado na rede interna Docker.
 ]
@@ -296,7 +296,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Implementação de monitoramento de saúde profundo em `/health` com testes ativos no MariaDB, Auth Service, Redis Streams e MinIO Storage, e exportador de métricas em `/metrics` no padrão OpenMetrics (Prometheus) com dashboard visual moderno para acompanhamento de latência, uptime e tráfego.
 
-  #evidencia([Atividade E3 — Dashboard visual de saúde e métricas Prometheus em tempo real], arquivo: "prints/atividade-e3-resultado.svg")
+  #evidencia([Atividade E3 — Painel de observabilidade e Health Check em tempo real (MariaDB e Auth Service UP)], arquivo: "prints/atividade-e3-health.png")
+  #evidencia([Atividade E3 — Dashboard de telemetria e métricas do sistema no padrão Prometheus (OpenMetrics)], arquivo: "prints/atividade-e3-metricas.png")
 ]
 
 // ============================================================
