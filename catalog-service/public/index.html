@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo Tom Hanks | Filmes, Favoritos & Moderação RBAC</title>
+  <title>Catálogo Tom Hanks | Rede Social de Cinema & Perfil</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -327,18 +327,26 @@
     .user-badge {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       background: var(--bg-input);
       border: 1px solid var(--border-color);
-      padding: 6px 14px;
+      padding: 5px 14px;
       border-radius: 50px;
       font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .user-badge:hover {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.15);
+      transform: translateY(-1px);
     }
 
     .user-avatar {
-      width: 26px;
-      height: 26px;
+      width: 28px;
+      height: 28px;
       background: var(--accent-blue);
       color: white;
       border-radius: 50%;
@@ -347,6 +355,14 @@
       justify-content: center;
       font-size: 12px;
       font-weight: 700;
+    }
+
+    .user-avatar-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--accent-blue);
     }
 
     .role-tag {
@@ -391,7 +407,7 @@
 
     /* Hero Banner */
     .hero-banner {
-      padding: 40px 0 20px;
+      padding: 36px 0 20px;
       text-align: center;
     }
 
@@ -405,8 +421,8 @@
     .hero-subtitle {
       color: var(--text-muted);
       font-size: 16px;
-      max-width: 600px;
-      margin: 0 auto 30px;
+      max-width: 620px;
+      margin: 0 auto 28px;
     }
 
     /* App Nav Tabs */
@@ -497,6 +513,8 @@
       align-items: center;
       justify-content: space-between;
       margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
     .section-title {
@@ -729,6 +747,15 @@
       border-color: #3b82f6;
     }
 
+    .comment-avatar-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent-blue);
+      flex-shrink: 0;
+    }
+
     .comment-icon {
       width: 44px;
       height: 44px;
@@ -823,6 +850,181 @@
     .btn-delete-comment.admin-mod:hover {
       background: #d97706;
       color: white;
+    }
+
+    /* ========================================================
+       PERFIL SOCIAL DO USUÁRIO (Atividade 6 - Object Storage)
+       ======================================================== */
+    .profile-banner-card {
+      background: linear-gradient(135deg, #151d30 0%, #1e293b 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 36px;
+      box-shadow: var(--shadow);
+    }
+
+    .profile-cover {
+      height: 150px;
+      background: linear-gradient(120deg, #b91c1c 0%, #4338ca 50%, #0f172a 100%);
+      position: relative;
+    }
+
+    .profile-body-wrapper {
+      padding: 0 36px 36px;
+      position: relative;
+    }
+
+    .profile-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: -65px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .profile-avatar-box {
+      position: relative;
+      width: 130px;
+      height: 130px;
+    }
+
+    .profile-avatar-img {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid var(--bg-card);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      background: var(--bg-input);
+    }
+
+    .profile-avatar-placeholder {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
+      color: #fff;
+      font-size: 48px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid var(--bg-card);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .btn-camera-upload {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      border: 3px solid var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: var(--transition);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn-camera-upload:hover {
+      background: var(--accent-hover);
+      transform: scale(1.1);
+    }
+
+    .profile-header-meta {
+      margin-bottom: 20px;
+    }
+
+    .profile-name-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .profile-user-handle {
+      font-size: 14px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .profile-bio-container {
+      background: rgba(15, 23, 42, 0.7);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 0 12px 12px 0;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      font-style: italic;
+    }
+
+    .profile-bio-container.empty {
+      color: var(--text-dim);
+      font-style: normal;
+    }
+
+    .social-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .social-stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .social-stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .social-stat-icon.favs { background: rgba(229, 9, 20, 0.15); color: #f87171; }
+    .social-stat-icon.comms { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .social-stat-icon.storage { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+
+    .social-stat-text h6 {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .social-stat-text .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
     }
 
     /* Admin Users Table */
@@ -943,7 +1145,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Modal Esqueci Senha */
+    /* Modais */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -965,7 +1167,7 @@
       border-radius: 16px;
       padding: 32px;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       box-shadow: var(--shadow);
       position: relative;
     }
@@ -991,6 +1193,9 @@
       .nav-container { flex-direction: column; gap: 14px; }
       .auth-card { padding: 28px 20px; }
       .admin-table th, .admin-table td { padding: 10px 8px; font-size: 12px; }
+      .profile-top-row { flex-direction: column; align-items: center; text-align: center; }
+      .profile-name-title { justify-content: center; }
+      .profile-user-handle { justify-content: center; }
     }
   </style>
 </head>
@@ -998,6 +1203,40 @@
 
   <!-- Toast Container -->
   <div id="toast-container"></div>
+
+  <!-- Modal Editar Perfil Social (Atividade 6) -->
+  <div id="edit-profile-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="fecharModalEditarPerfil()"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="font-size: 20px; margin-bottom: 10px;">
+        <i class="fa-solid fa-user-pen" style="color: var(--accent-blue); margin-right: 8px;"></i>Editar Meu Perfil
+      </h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+        Personalize sua apresentação e compartilhe sua paixão por cinema com a comunidade.
+      </p>
+      
+      <form onsubmit="event.preventDefault(); salvarPerfil();">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="edit-profile-nome" class="form-control" placeholder="Seu nome" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Biografia / Bio do Perfil</label>
+          <div class="input-wrapper">
+            <textarea id="edit-profile-bio" class="form-control" style="padding-left: 14px; min-height: 95px; resize: vertical;" placeholder="Escreva algo sobre você, seus clássicos favoritos do Tom Hanks ou sua paixão por cinema..."></textarea>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-save-profile" class="btn btn-primary" style="margin-top: 10px;">
+          <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações no Perfil
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Modal Esqueci Minha Senha -->
   <div id="forgot-modal" class="modal-overlay hidden">
@@ -1052,7 +1291,7 @@
         </div>
 
         <button type="submit" id="btn-login" class="btn btn-primary">
-          <i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo
+          <i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo & Comunidade
         </button>
 
         <button type="button" class="btn-link" onclick="abrirModalEsqueci()">
@@ -1128,8 +1367,10 @@
           </a>
 
           <div class="user-profile">
-            <div class="user-badge">
-              <div class="user-avatar" id="user-avatar-char">U</div>
+            <div class="user-badge" id="user-badge-btn" onclick="mostrarSecao('perfil', document.getElementById('tab-btn-perfil'))" title="Acessar Meu Perfil Social">
+              <div id="user-avatar-slot">
+                <div class="user-avatar" id="user-avatar-char">U</div>
+              </div>
               <span id="user-display">Carregando...</span>
               <span class="role-tag" id="role-display">USUÁRIO</span>
             </div>
@@ -1145,13 +1386,13 @@
     <main class="container">
       <!-- Hero -->
       <section class="hero-banner">
-        <h1 class="hero-title">Filmografia Completa</h1>
-        <p class="hero-subtitle">Descubra, favorite e comente todos os sucessos e clássicos estrelados por Tom Hanks.</p>
+        <h1 class="hero-title">Comunidade & Filmografia</h1>
+        <p class="hero-subtitle">Conecte-se com cinéfilos, comente, compartilhe seu perfil e descubra clássicos estrelados por Tom Hanks.</p>
 
         <!-- Navegação por Abas -->
         <div class="app-tabs">
           <button class="app-tab-btn active" onclick="mostrarSecao('todos', this)">
-            <i class="fa-solid fa-clapperboard"></i> Todos os Filmes (<span id="total-movies-badge">0</span>)
+            <i class="fa-solid fa-clapperboard"></i> Filmes (<span id="total-movies-badge">0</span>)
           </button>
           <button class="app-tab-btn" onclick="mostrarSecao('favoritos', this)">
             <i class="fa-solid fa-heart" style="color: var(--accent);"></i> Meus Favoritos (<span id="total-favs-badge">0</span>)
@@ -1159,15 +1400,21 @@
           <button class="app-tab-btn" onclick="mostrarSecao('comentarios', this)">
             <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comunidade (<span id="total-comms-badge">0</span>)
           </button>
+          <button id="tab-btn-perfil" class="app-tab-btn" onclick="mostrarSecao('perfil', this)">
+            <i class="fa-solid fa-user-astronaut" style="color: #a855f7;"></i> Meu Perfil
+          </button>
           <button id="tab-btn-admin" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('admin', this)">
             <i class="fa-solid fa-shield-halved"></i> Painel Admin (<span id="total-users-badge">0</span>)
+          </button>
+          <button id="tab-btn-logs" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('logs', this)">
+            <i class="fa-solid fa-list-check"></i> Auditoria (<span id="total-logs-badge">0</span>)
           </button>
         </div>
 
         <!-- Barra de Busca Rápida -->
         <div class="search-bar-wrapper" id="search-container">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="movie-search" placeholder="Pesquisar por título de filme..." oninput="filtrarFilmes()">
+          <input type="text" id="movie-search" placeholder="Pesquisar filme por título ou personagem..." oninput="filtrarFilmes()">
         </div>
       </section>
 
@@ -1193,17 +1440,101 @@
         <div id="favs-list" class="movies-grid"></div>
       </section>
 
-      <!-- SEÇÃO 3: COMENTÁRIOS E MODERAÇÃO RBAC -->
+      <!-- SEÇÃO 3: COMENTÁRIOS E COMUNIDADE -->
       <section id="tab-content-comentarios" class="hidden">
         <div class="section-header">
           <h2 class="section-title">
-            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comentários da Comunidade
+            <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Feed da Comunidade & Moderação
           </h2>
         </div>
         <div id="comments-list" class="comments-list"></div>
       </section>
 
-      <!-- SEÇÃO 4: PAINEL ADMINISTRATIVO (EXCLUSIVO ADMIN) -->
+      <!-- SEÇÃO 4: PERFIL SOCIAL DO USUÁRIO (Atividade 6 - Object Storage MinIO) -->
+      <section id="tab-content-perfil" class="hidden">
+        <!-- Banner e Cabeçalho do Perfil -->
+        <div class="profile-banner-card">
+          <div class="profile-cover"></div>
+          <div class="profile-body-wrapper">
+            <div class="profile-top-row">
+              <div class="profile-avatar-box">
+                <div id="profile-avatar-container">
+                  <div class="profile-avatar-placeholder" id="profile-avatar-char">U</div>
+                </div>
+                <button class="btn-camera-upload" onclick="document.getElementById('input-foto-perfil').click()" title="Alterar Foto de Perfil (Envia para o Object Storage MinIO)">
+                  <i class="fa-solid fa-camera"></i>
+                </button>
+                <input type="file" id="input-foto-perfil" accept="image/jpeg,image/png,image/webp,image/gif" onchange="uploadFotoPerfil(event)" style="display: none;">
+              </div>
+
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="abrirModalEditarPerfil()" style="width: auto; padding: 10px 22px; font-size: 14px;">
+                  <i class="fa-solid fa-pen-to-square"></i> Editar Perfil
+                </button>
+                <button class="btn" onclick="document.getElementById('input-foto-perfil').click()" style="width: auto; padding: 10px 20px; font-size: 14px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main);">
+                  <i class="fa-solid fa-cloud-arrow-up" style="color: #38bdf8;"></i> Trocar Foto
+                </button>
+              </div>
+            </div>
+
+            <div class="profile-header-meta">
+              <div class="profile-name-title">
+                <span id="profile-nome-display">Carregando...</span>
+                <span class="role-tag" id="profile-role-display">USUÁRIO</span>
+              </div>
+              <div class="profile-user-handle">
+                <span><i class="fa-solid fa-envelope"></i> <span id="profile-email-display">email@exemplo.com</span></span>
+                <span id="profile-joined-display"><i class="fa-regular fa-calendar-check"></i> Membro ativo</span>
+                <span style="color: #10b981;"><i class="fa-solid fa-circle-check"></i> Perfil Verificado</span>
+              </div>
+            </div>
+
+            <!-- Biografia do Usuário -->
+            <div class="profile-bio-container" id="profile-bio-display">
+              Nenhuma biografia adicionada ainda. Clique em "Editar Perfil" para contar sobre você e seus filmes favoritos!
+            </div>
+
+            <div style="font-size: 13px; color: #10b981; display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+              <i class="fa-solid fa-cloud"></i> Object Storage MinIO Ativo • Fotos armazenadas no bucket <code>perfil-fotos</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estatísticas Sociais do Perfil -->
+        <div class="social-stats-grid">
+          <div class="social-stat-box">
+            <div class="social-stat-icon favs"><i class="fa-solid fa-heart"></i></div>
+            <div class="social-stat-text">
+              <h6>Filmes Favoritos</h6>
+              <div class="stat-value" id="profile-stat-favs">0</div>
+            </div>
+          </div>
+          <div class="social-stat-box">
+            <div class="social-stat-icon comms"><i class="fa-solid fa-comments"></i></div>
+            <div class="social-stat-text">
+              <h6>Comentários Feitos</h6>
+              <div class="stat-value" id="profile-stat-comms">0</div>
+            </div>
+          </div>
+          <div class="social-stat-box">
+            <div class="social-stat-icon storage"><i class="fa-solid fa-database"></i></div>
+            <div class="social-stat-text">
+              <h6>Storage de Imagens</h6>
+              <div class="stat-value" style="font-size: 16px; color: #34d399;">MinIO S3 Ready</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grade de Filmes Favoritados no Perfil -->
+        <div class="section-header">
+          <h3 class="section-title" style="font-size: 19px;">
+            <i class="fa-solid fa-clapperboard" style="color: var(--accent);"></i> Meus Filmes Salvos no Perfil
+          </h3>
+        </div>
+        <div id="profile-favs-list" class="movies-grid"></div>
+      </section>
+
+      <!-- SEÇÃO 5: PAINEL ADMINISTRATIVO (EXCLUSIVO ADMIN) -->
       <section id="tab-content-admin" class="hidden">
         <div class="section-header">
           <h2 class="section-title">
@@ -1223,6 +1554,34 @@
             </thead>
             <tbody id="users-table-body">
               <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando usuários...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 6: LOGS DE AUDITORIA (Exclusivo Admin) -->
+      <section id="tab-content-logs" class="hidden">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="fa-solid fa-list-check" style="color: var(--accent-gold);"></i> Logs de Auditoria do Sistema (Redis Streams)
+          </h2>
+          <button class="btn btn-primary" onclick="carregarLogsAuditoria()" style="width: auto; padding: 8px 18px; font-size: 13px;">
+            <i class="fa-solid fa-rotate"></i> Atualizar Logs
+          </button>
+        </div>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Ação</th>
+                <th>Usuário</th>
+                <th>Detalhes do Evento</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando logs de auditoria...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1331,7 +1690,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showToast(`Bem-vindo de volta, ${data.nome}!`, 'success');
+          showToast(`Bem-vindo de volta, ${data.nome}! 🎉`, 'success');
           carregarDados();
         } else {
           document.getElementById('auth-msg').innerText = data.error || 'Credenciais inválidas.';
@@ -1339,7 +1698,7 @@
       } catch (err) {
         document.getElementById('auth-msg').innerText = 'Erro ao conectar ao servidor.';
       } finally {
-        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo';
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Acessar Catálogo & Comunidade';
         btn.disabled = false;
       }
     }
@@ -1391,6 +1750,8 @@
       document.getElementById('tab-content-favoritos').classList.add('hidden');
       document.getElementById('tab-content-comentarios').classList.add('hidden');
       document.getElementById('tab-content-admin').classList.add('hidden');
+      document.getElementById('tab-content-perfil').classList.add('hidden');
+      document.getElementById('tab-content-logs').classList.add('hidden');
 
       const searchContainer = document.getElementById('search-container');
       if (secao === 'todos') {
@@ -1404,10 +1765,18 @@
         document.getElementById('tab-content-comentarios').classList.remove('hidden');
         searchContainer.classList.add('hidden');
         carregarComentarios();
+      } else if (secao === 'perfil') {
+        document.getElementById('tab-content-perfil').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarPerfil();
       } else if (secao === 'admin') {
         document.getElementById('tab-content-admin').classList.remove('hidden');
         searchContainer.classList.add('hidden');
         carregarUsuariosAdmin();
+      } else if (secao === 'logs') {
+        document.getElementById('tab-content-logs').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarLogsAuditoria();
       }
     }
 
@@ -1426,22 +1795,33 @@
         document.getElementById('app-section').classList.remove('hidden');
 
         document.getElementById('user-display').innerText = usuarioAtual.nome;
-        document.getElementById('user-avatar-char').innerText = usuarioAtual.nome.charAt(0).toUpperCase();
+        
+        // Atualiza avatar no navbar (imagem do MinIO ou inicial)
+        const avatarSlot = document.getElementById('user-avatar-slot');
+        if (usuarioAtual.foto_url) {
+          avatarSlot.innerHTML = `<img src="${usuarioAtual.foto_url}?t=${Date.now()}" class="user-avatar-img" alt="${usuarioAtual.nome}" />`;
+        } else {
+          avatarSlot.innerHTML = `<div class="user-avatar" id="user-avatar-char">${usuarioAtual.nome.charAt(0).toUpperCase()}</div>`;
+        }
         
         const roleBadge = document.getElementById('role-display');
         roleBadge.innerText = (usuarioAtual.role || 'usuario').toUpperCase();
         roleBadge.className = `role-tag ${usuarioAtual.role || 'usuario'}`;
 
-        // Se for admin, exibe a aba de administração
+        // Se for admin, exibe abas de administração e auditoria
         const adminTab = document.getElementById('tab-btn-admin');
+        const logsTab = document.getElementById('tab-btn-logs');
         if (usuarioAtual.role === 'admin') {
           adminTab.classList.remove('hidden');
+          logsTab.classList.remove('hidden');
           carregarContadorUsuarios();
+          carregarContadorLogs();
         } else {
           adminTab.classList.add('hidden');
+          logsTab.classList.add('hidden');
         }
 
-        // Carregar Favoritos primeiro para sincronizar os botões
+        // Carregar dados iniciais
         await carregarFavoritos();
         await carregarFilmes();
         await carregarComentarios();
@@ -1636,7 +2016,7 @@
         if (res.ok) {
           input.value = '';
           toggleCommentBox(tmdb_movie_id);
-          showToast('Comentário publicado com sucesso! 💬', 'success');
+          showToast('Comentário publicado no feed da comunidade! 💬', 'success');
           carregarComentarios();
         } else {
           showToast('Erro ao publicar comentário.', 'error');
@@ -1646,7 +2026,7 @@
       }
     }
 
-    // Carregar Comentários da Comunidade
+    // Carregar Comentários da Comunidade (com Avatares do MinIO)
     async function carregarComentarios() {
       try {
         const res = await fetch('/api/comments');
@@ -1659,8 +2039,8 @@
           container.innerHTML = `
             <div class="empty-state">
               <i class="fa-regular fa-comments"></i>
-              <h4>Nenhum comentário registrado</h4>
-              <p>Compartilhe suas impressões e análises sobre os filmes de Tom Hanks!</p>
+              <h4>Nenhum comentário registrado ainda</h4>
+              <p>Compartilhe suas análises sobre os filmes de Tom Hanks!</p>
             </div>
           `;
           return;
@@ -1694,11 +2074,14 @@
             ? '<span class="role-tag admin" style="font-size: 10px; margin-left: 6px;">ADMIN</span>' 
             : '';
 
+          // Renderiza Foto de Perfil do MinIO se disponível ou Ícone Padrão
+          const avatarHtml = c.autor_foto_url
+            ? `<img src="${c.autor_foto_url}" class="comment-avatar-img" alt="${c.autor_nome || 'Usuário'}" />`
+            : `<div class="comment-icon"><i class="fa-solid fa-user"></i></div>`;
+
           return `
             <div class="comment-item" id="comment-card-${c.id}">
-              <div class="comment-icon">
-                <i class="fa-solid fa-quote-left"></i>
-              </div>
+              ${avatarHtml}
               <div class="comment-content">
                 <div class="comment-header">
                   <div class="comment-author-info">
@@ -1744,7 +2127,198 @@
       }
     }
 
-    // Carregar Contador de Usuários no Painel Admin
+    // ========================================================
+    // PERFIL DO USUÁRIO & OBJECT STORAGE MINIO (Atividade 6)
+    // ========================================================
+
+    async function carregarPerfil() {
+      try {
+        const res = await fetch('/api/profile');
+        if (!res.ok) {
+          showToast('Erro ao carregar dados do perfil.', 'error');
+          return;
+        }
+
+        const perfil = await res.json();
+        usuarioAtual = { ...usuarioAtual, ...perfil };
+
+        // 1. Atualizar Avatar do MinIO no Perfil
+        const avatarContainer = document.getElementById('profile-avatar-container');
+        if (perfil.foto_url) {
+          avatarContainer.innerHTML = `<img src="${perfil.foto_url}?t=${Date.now()}" class="profile-avatar-img" alt="${perfil.nome}" />`;
+        } else {
+          avatarContainer.innerHTML = `<div class="profile-avatar-placeholder" id="profile-avatar-char">${perfil.nome.charAt(0).toUpperCase()}</div>`;
+        }
+
+        // 2. Atualizar Informações Básicas
+        document.getElementById('profile-nome-display').innerText = perfil.nome;
+        document.getElementById('profile-email-display').innerText = perfil.email;
+        
+        const roleBadge = document.getElementById('profile-role-display');
+        roleBadge.innerText = (perfil.role || 'usuario').toUpperCase();
+        roleBadge.className = `role-tag ${perfil.role || 'usuario'}`;
+
+        if (perfil.criado_em) {
+          const dataCriacao = new Date(perfil.criado_em).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          document.getElementById('profile-joined-display').innerHTML = `<i class="fa-regular fa-calendar-check"></i> Membro desde ${dataCriacao}`;
+        }
+
+        // 3. Atualizar Biografia Social
+        const bioBox = document.getElementById('profile-bio-display');
+        if (perfil.bio && perfil.bio.trim()) {
+          bioBox.innerText = `"${perfil.bio.trim()}"`;
+          bioBox.classList.remove('empty');
+        } else {
+          bioBox.innerText = 'Nenhuma biografia adicionada ainda. Clique em "Editar Perfil" para contar sobre você e seus filmes favoritos!';
+          bioBox.classList.add('empty');
+        }
+
+        // 4. Atualizar Estatísticas Sociais
+        document.getElementById('profile-stat-favs').innerText = perfil.total_favoritos || (perfil.favoritos ? perfil.favoritos.length : 0);
+        document.getElementById('profile-stat-comms').innerText = perfil.total_comentarios || 0;
+
+        // 5. Renderizar Filmes Favoritos no Perfil
+        const favsContainer = document.getElementById('profile-favs-list');
+        const favs = perfil.favoritos || [];
+        if (favs.length === 0) {
+          favsContainer.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+              <i class="fa-regular fa-heart"></i>
+              <h4>Nenhum filme salvo no momento</h4>
+              <p>Favorite clássicos na aba "Filmes" para vê-los em destaque aqui!</p>
+            </div>
+          `;
+        } else {
+          favsContainer.innerHTML = favs.map(f => {
+            const posterUrl = f.poster_path 
+              ? `https://image.tmdb.org/t/p/w500${f.poster_path}`
+              : 'https://via.placeholder.com/500x750/1e293b/94a3b8?text=Sem+Poster';
+
+            return `
+              <div class="movie-card">
+                <div class="poster-container">
+                  <img src="${posterUrl}" alt="${f.titulo}" loading="lazy" />
+                </div>
+                <div class="movie-body">
+                  <h4 class="movie-title">${f.titulo}</h4>
+                  <div class="card-actions">
+                    <button class="btn-fav active" style="cursor: default;">
+                      <i class="fa-solid fa-heart"></i> Salvo nos Favoritos
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar perfil:', err);
+        showToast('Erro de comunicação ao carregar perfil.', 'error');
+      }
+    }
+
+    // Modal de Edição de Perfil Social
+    function abrirModalEditarPerfil() {
+      if (!usuarioAtual) return;
+      document.getElementById('edit-profile-nome').value = usuarioAtual.nome || '';
+      document.getElementById('edit-profile-bio').value = usuarioAtual.bio || '';
+      document.getElementById('edit-profile-modal').classList.remove('hidden');
+    }
+
+    function fecharModalEditarPerfil() {
+      document.getElementById('edit-profile-modal').classList.add('hidden');
+    }
+
+    async function salvarPerfil() {
+      const nome = document.getElementById('edit-profile-nome').value.trim();
+      const bio = document.getElementById('edit-profile-bio').value.trim();
+
+      if (!nome) return showToast('O nome não pode ficar em branco.', 'error');
+
+      const btn = document.getElementById('btn-save-profile');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, bio })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast(data.message || 'Perfil atualizado com sucesso! ✨', 'success');
+          fecharModalEditarPerfil();
+          document.getElementById('user-display').innerText = nome;
+          await carregarPerfil();
+        } else {
+          showToast(data.error || 'Erro ao atualizar perfil.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro ao conectar com o servidor.', 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Upload de Foto de Perfil para o Object Storage MinIO
+    async function uploadFotoPerfil(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        showToast('Formato de arquivo inválido. Apenas imagens são permitidas.', 'error');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('A imagem selecionada excede o limite máximo de 5MB.', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('foto', file);
+
+      showToast('Enviando imagem para o Object Storage MinIO...', 'info');
+
+      try {
+        const res = await fetch('/api/profile/upload-photo', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showToast('Foto de perfil salva com sucesso no MinIO! 📸', 'success');
+          usuarioAtual.foto_url = data.foto_url;
+          
+          // Atualiza foto no perfil
+          document.getElementById('profile-avatar-container').innerHTML = 
+            `<img src="${data.foto_url}?t=${Date.now()}" class="profile-avatar-img" alt="Foto de perfil" />`;
+          
+          // Atualiza foto no navbar
+          document.getElementById('user-avatar-slot').innerHTML = 
+            `<img src="${data.foto_url}?t=${Date.now()}" class="user-avatar-img" alt="Foto de perfil" />`;
+          
+          // Atualiza lista de comentários
+          carregarComentarios();
+        } else {
+          showToast(data.error || 'Erro ao processar upload da foto.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação durante o upload.', 'error');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    // ========================================================
+    // PAINEL DE ADMIN & AUDITORIA REDIS (Atividades 4 e 5)
+    // ========================================================
+
     async function carregarContadorUsuarios() {
       try {
         const res = await fetch('/api/users');
@@ -1755,7 +2329,16 @@
       } catch (err) {}
     }
 
-    // Carregar Lista de Usuários no Painel Admin
+    async function carregarContadorLogs() {
+      try {
+        const res = await fetch('/api/admin/logs?limit=100');
+        if (res.ok) {
+          const logs = await res.json();
+          document.getElementById('total-logs-badge').innerText = logs.length;
+        }
+      } catch (err) {}
+    }
+
     async function carregarUsuariosAdmin() {
       const tbody = document.getElementById('users-table-body');
       tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
@@ -1814,7 +2397,6 @@
       }
     }
 
-    // Alterar Papel de Usuário (Admin Action)
     async function alterarPapelUsuario(userId, novoPapel) {
       if (!confirm(`Deseja alterar o papel deste usuário para "${novoPapel}"?`)) return;
 
@@ -1834,6 +2416,48 @@
         }
       } catch (err) {
         showToast('Erro de comunicação ao alterar papel.', 'error');
+      }
+    }
+
+    async function carregarLogsAuditoria() {
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
+
+      try {
+        const res = await fetch('/api/admin/logs?limit=50');
+        if (!res.ok) {
+          const errData = await res.json();
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">${errData.error || 'Acesso restrito a administradores.'}</td></tr>`;
+          return;
+        }
+
+        const logs = await res.json();
+        document.getElementById('total-logs-badge').innerText = logs.length;
+
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum log de auditoria registrado no Redis Stream.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = logs.map(l => {
+          const dataFormatada = l.timestamp 
+            ? new Date(l.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : 'Recentemente';
+
+          const detalhesStr = typeof l.detalhes === 'object' ? JSON.stringify(l.detalhes) : (l.detalhes || '-');
+
+          return `
+            <tr>
+              <td style="font-family: monospace; font-size: 12px; color: var(--text-dim); white-space: nowrap;">${dataFormatada}</td>
+              <td><span class="role-tag admin" style="font-size: 11px;">${l.acao}</span></td>
+              <td><strong>#${l.usuario_id}</strong> ${l.usuario_nome ? `(${l.usuario_nome})` : ''}</td>
+              <td style="font-family: monospace; font-size: 12px; color: #93c5fd; max-width: 320px; word-break: break-all;">${detalhesStr}</td>
+              <td style="font-family: monospace; font-size: 12px; color: var(--text-dim);">${l.ip || '127.0.0.1'}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">Erro ao carregar logs de auditoria do Redis.</td></tr>';
       }
     }
 
