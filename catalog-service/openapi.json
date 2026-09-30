@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Catalog Service API — Catálogo de Filmes Tom Hanks",
-    "description": "API principal do Catálogo de Filmes Tom Hanks com autenticação via sessão, integração com TMDB, favoritos, comentários comunitários e moderação RBAC.",
+    "title": "Catalog Service API — Catálogo & Rede Social Tom Hanks",
+    "description": "API principal do Catálogo e Rede Social de Filmes Tom Hanks com autenticação 2FA, validação de e-mails reais, armazenamento de fotos no MinIO Object Storage, auditoria via Redis Streams e moderação RBAC.",
     "version": "1.0.0",
     "contact": {
       "name": "Tom Hanks Catalog Team",
@@ -16,18 +16,19 @@
     }
   ],
   "tags": [
-    { "name": "Autenticação & Sessão", "description": "Endpoints de autenticação e perfil do usuário logado" },
+    { "name": "Autenticação & 2FA", "description": "Endpoints de cadastro com validação de e-mail real, ativação e login com verificação em duas etapas" },
+    { "name": "Perfil Social & MinIO", "description": "Gerenciamento de perfil, biografia e fotos de avatar no Object Storage MinIO" },
     { "name": "Catálogo de Filmes", "description": "Consulta de filmografia via API The Movie Database (TMDB)" },
     { "name": "Favoritos", "description": "Gerenciamento de filmes favoritos do usuário" },
-    { "name": "Comentários & Moderação RBAC", "description": "Postagem, visualização e moderação restrita por papel" },
-    { "name": "Administração de Usuários", "description": "Gerenciamento de usuários restrito a administradores (403 para não-admins)" },
-    { "name": "Observabilidade", "description": "Health checks e métricas Prometheus" }
+    { "name": "Comentários & Moderação RBAC", "description": "Postagem e moderação comunitária restrita por papel" },
+    { "name": "Administração & Auditoria", "description": "Gerenciamento de usuários e consulta de logs no Redis Streams" },
+    { "name": "Observabilidade", "description": "Health checks de dependências e métricas Prometheus" }
   ],
   "paths": {
     "/api/register": {
       "post": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Cadastrar novo usuário e iniciar sessão",
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Cadastrar novo usuário com validação de e-mail real e envio de código de ativação",
         "requestBody": {
           "required": true,
           "content": {
@@ -36,8 +37,8 @@
                 "type": "object",
                 "required": ["nome", "email", "senha"],
                 "properties": {
-                  "nome": { "type": "string", "example": "Tom Hanks" },
-                  "email": { "type": "string", "example": "tom@exemplo.com" },
+                  "nome": { "type": "string", "example": "Amabili Flor" },
+                  "email": { "type": "string", "example": "usuario@gmail.com" },
                   "senha": { "type": "string", "example": "senha123" },
                   "role": { "type": "string", "enum": ["usuario", "admin"], "default": "usuario" }
                 }
@@ -46,15 +47,40 @@
           }
         },
         "responses": {
-          "200": { "description": "Cadastro realizado e sessão iniciada" },
-          "400": { "description": "Dados incompletos ou e-mail já em uso" }
+          "200": { "description": "Código de ativação enviado para o e-mail real" },
+          "400": { "description": "E-mail inválido, inexistente ou já em uso" }
+        }
+      }
+    },
+    "/api/verify-email": {
+      "post": {
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Ativar conta informando o código de 6 dígitos recebido por e-mail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "codigo"],
+                "properties": {
+                  "email": { "type": "string", "example": "usuario@gmail.com" },
+                  "codigo": { "type": "string", "example": "123456" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Conta ativada com sucesso" },
+          "400": { "description": "Código incorreto ou expirado" }
         }
       }
     },
     "/api/login": {
       "post": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Login do usuário",
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Iniciar login e solicitar código de verificação em 2 etapas (2FA)",
         "requestBody": {
           "required": true,
           "content": {
@@ -63,7 +89,7 @@
                 "type": "object",
                 "required": ["email", "senha"],
                 "properties": {
-                  "email": { "type": "string", "example": "tom@exemplo.com" },
+                  "email": { "type": "string", "example": "usuario@gmail.com" },
                   "senha": { "type": "string", "example": "senha123" }
                 }
               }
@@ -71,264 +97,243 @@
           }
         },
         "responses": {
-          "200": { "description": "Autenticado com sucesso" },
-          "401": { "description": "Credenciais inválidas" }
+          "200": { "description": "Código de 2 etapas enviado para o e-mail" },
+          "401": { "description": "Credenciais inválidas" },
+          "403": { "description": "Conta pendente de ativação" }
+        }
+      }
+    },
+    "/api/verify-2fa": {
+      "post": {
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Confirmar código 2FA e iniciar sessão autenticada",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "codigo"],
+                "properties": {
+                  "email": { "type": "string", "example": "usuario@gmail.com" },
+                  "codigo": { "type": "string", "example": "654321" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Autenticado com sucesso na sessão" },
+          "400": { "description": "Código 2FA incorreto ou expirado" }
+        }
+      }
+    },
+    "/api/resend-code": {
+      "post": {
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Reenviar código de segurança (ativação ou 2FA)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "tipo"],
+                "properties": {
+                  "email": { "type": "string" },
+                  "tipo": { "type": "string", "enum": ["EMAIL_VERIFICACAO", "LOGIN_2FA"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Novo código enviado" }
         }
       }
     },
     "/api/forgot-password": {
       "post": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Solicitar recuperação de senha",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["email"],
-                "properties": {
-                  "email": { "type": "string", "example": "tom@exemplo.com" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Link de recuperação enviado por e-mail" },
-          "404": { "description": "E-mail não cadastrado" }
-        }
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Solicitar link de recuperação de senha por e-mail",
+        "responses": { "200": { "description": "Link enviado" } }
       }
     },
     "/api/reset-password": {
       "post": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Redefinir senha através de token recebido no e-mail",
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Redefinir senha com token",
+        "responses": { "200": { "description": "Senha atualizada" } }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Encerrar sessão ativa",
+        "responses": { "200": { "description": "Sessão encerrada" } }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": ["Autenticação & 2FA"],
+        "summary": "Consultar dados do usuário autenticado na sessão",
+        "responses": { "200": { "description": "Dados do usuário logado" } }
+      }
+    },
+    "/api/profile": {
+      "get": {
+        "tags": ["Perfil Social & MinIO"],
+        "summary": "Obter perfil social completo do usuário logado com estatísticas",
+        "responses": { "200": { "description": "Perfil com estatísticas, favoritos e foto" } }
+      },
+      "put": {
+        "tags": ["Perfil Social & MinIO"],
+        "summary": "Atualizar biografia e nome de exibição",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["token", "novaSenha"],
                 "properties": {
-                  "token": { "type": "string" },
-                  "novaSenha": { "type": "string" }
+                  "nome": { "type": "string" },
+                  "bio": { "type": "string" }
                 }
               }
             }
           }
         },
-        "responses": {
-          "200": { "description": "Senha alterada com sucesso" },
-          "400": { "description": "Token inválido ou expirado" }
-        }
+        "responses": { "200": { "description": "Perfil atualizado com sucesso" } }
       }
     },
-    "/api/logout": {
-      "post": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Encerrar sessão ativa",
-        "responses": {
-          "200": { "description": "Sessão destruída com sucesso" }
-        }
-      }
-    },
-    "/api/me": {
+    "/api/profile/{id}": {
       "get": {
-        "tags": ["Autenticação & Sessão"],
-        "summary": "Consultar dados do usuário autenticado na sessão",
-        "responses": {
-          "200": { "description": "Dados do usuário (id, nome, email, role)" },
-          "401": { "description": "Não autenticado ou sessão expirada" }
-        }
+        "tags": ["Perfil Social & MinIO"],
+        "summary": "Consultar perfil público de outro usuário (Sem expor e-mails ou senhas)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Dados públicos do usuário" } }
+      }
+    },
+    "/api/profile/upload-photo": {
+      "post": {
+        "tags": ["Perfil Social & MinIO"],
+        "summary": "Upload de foto de perfil para o Object Storage MinIO",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "foto": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Foto enviada e armazenada no MinIO com sucesso" } }
+      }
+    },
+    "/api/profile/avatar/{key}": {
+      "get": {
+        "tags": ["Perfil Social & MinIO"],
+        "summary": "Download / Streaming da imagem de avatar armazenada no MinIO",
+        "parameters": [
+          { "name": "key", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Arquivo de imagem binária" } }
       }
     },
     "/api/movies": {
       "get": {
         "tags": ["Catálogo de Filmes"],
-        "summary": "Listar filmografia de Tom Hanks",
-        "description": "Consulta créditos cinematográficos via API The Movie Database (TMDB).",
-        "responses": {
-          "200": { "description": "Lista de filmes com título, pôster, nota e ano" },
-          "401": { "description": "Acesso não autorizado (requer login)" },
-          "500": { "description": "Erro na comunicação com a API TMDB" }
-        }
+        "summary": "Listar filmografia de Tom Hanks via TMDB",
+        "responses": { "200": { "description": "Lista de filmes" } }
       }
     },
     "/api/favorites": {
       "get": {
         "tags": ["Favoritos"],
-        "summary": "Listar favoritos do usuário logado",
-        "responses": {
-          "200": { "description": "Lista de filmes favoritados" },
-          "401": { "description": "Requer login" }
-        }
+        "summary": "Listar favoritos do usuário",
+        "responses": { "200": { "description": "Lista de favoritos" } }
       },
       "post": {
         "tags": ["Favoritos"],
         "summary": "Adicionar filme aos favoritos",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["tmdb_movie_id", "titulo"],
-                "properties": {
-                  "tmdb_movie_id": { "type": "integer", "example": 13 },
-                  "titulo": { "type": "string", "example": "Forrest Gump" },
-                  "poster_path": { "type": "string", "example": "/saHP97rTPS5eLmrLQEcANmKrsFl.jpg" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Filme favoritado com sucesso" },
-          "400": { "description": "Filme já está nos favoritos" },
-          "401": { "description": "Requer login" }
-        }
+        "responses": { "200": { "description": "Filme favoritado" } }
+      }
+    },
+    "/api/favorites/{tmdbId}": {
+      "delete": {
+        "tags": ["Favoritos"],
+        "summary": "Remover filme dos favoritos",
+        "parameters": [
+          { "name": "tmdbId", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Filme removido" } }
       }
     },
     "/api/comments": {
       "get": {
         "tags": ["Comentários & Moderação RBAC"],
-        "summary": "Listar comentários da comunidade com autores e datas",
-        "responses": {
-          "200": { "description": "Lista de todos os comentários" },
-          "401": { "description": "Requer login" }
-        }
+        "summary": "Listar comentários com avatares e autores",
+        "responses": { "200": { "description": "Lista de comentários" } }
       },
       "post": {
         "tags": ["Comentários & Moderação RBAC"],
         "summary": "Publicar comentário em um filme",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["tmdb_movie_id", "texto"],
-                "properties": {
-                  "tmdb_movie_id": { "type": "integer", "example": 13 },
-                  "texto": { "type": "string", "example": "Uma das maiores atuações do cinema mundial!" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Comentário postado com sucesso" },
-          "400": { "description": "Texto vazio" },
-          "401": { "description": "Requer login" }
-        }
+        "responses": { "200": { "description": "Comentário salvo" } }
       }
     },
     "/api/comments/{id}": {
       "delete": {
         "tags": ["Comentários & Moderação RBAC"],
-        "summary": "Excluir comentário (Enforcement RBAC no Servidor)",
-        "description": "Permitido apenas ao autor do comentário ou a Administradores (moderação). Retorna 403 Forbidden para outros usuários.",
+        "summary": "Excluir comentário (Dono ou Admin para moderação)",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
-          "200": { "description": "Comentário excluído com sucesso" },
-          "401": { "description": "Não autenticado" },
-          "403": { "description": "Acesso negado: apenas o autor ou um administrador podem excluir este comentário" },
-          "404": { "description": "Comentário não encontrado" }
+          "200": { "description": "Comentário excluído" },
+          "403": { "description": "Acesso negado: 403 Forbidden" }
         }
       }
     },
     "/api/users": {
       "get": {
-        "tags": ["Administração de Usuários"],
-        "summary": "Listar todos os usuários do sistema (Exclusivo Admin)",
-        "description": "Protegido por RBAC. Retorna 403 Forbidden se o usuário autenticado não for admin.",
-        "responses": {
-          "200": { "description": "Lista de usuários cadastrados" },
-          "401": { "description": "Não autenticado" },
-          "403": { "description": "Acesso negado (403 Forbidden): Requer privilégios de administrador" }
-        }
+        "tags": ["Administração & Auditoria"],
+        "summary": "Listar usuários cadastrados (Exclusivo Admin)",
+        "responses": { "200": { "description": "Lista de usuários" } }
       }
     },
     "/api/users/{id}/role": {
       "patch": {
-        "tags": ["Administração de Usuários"],
-        "summary": "Alterar papel do usuário (Exclusivo Admin)",
-        "description": "Permite promover para admin ou rebaixar para usuario. Retorna 403 para não-admins.",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["role"],
-                "properties": {
-                  "role": { "type": "string", "enum": ["usuario", "admin"] }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Papel atualizado com sucesso" },
-          "401": { "description": "Não autenticado" },
-          "403": { "description": "Acesso negado (403): Requer privilégios de administrador" }
-        }
+        "tags": ["Administração & Auditoria"],
+        "summary": "Alterar papel RBAC de usuário (Exclusivo Admin)",
+        "responses": { "200": { "description": "Papel atualizado" } }
       }
     },
-    "/api/logs": {
+    "/api/admin/logs": {
       "get": {
-        "tags": ["Administração de Usuários"],
-        "summary": "Consultar Logs de Auditoria do Redis Streams (Exclusivo Admin)",
-        "description": "Retorna os eventos de auditoria e segurança persistidos no Redis Stream (login, logout, moderação, tentativas 403, etc.). Retorna 403 Forbidden para usuários comuns.",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": { "type": "integer", "default": 100 }
-          },
-          {
-            "name": "acao",
-            "in": "query",
-            "required": false,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": { "description": "Lista de logs de auditoria retornada com sucesso" },
-          "401": { "description": "Não autenticado" },
-          "403": { "description": "Acesso negado (403 Forbidden): Requer privilégios de administrador" }
-        }
+        "tags": ["Administração & Auditoria"],
+        "summary": "Consultar logs de auditoria no Redis Streams (Exclusivo Admin)",
+        "responses": { "200": { "description": "Lista de eventos de auditoria" } }
       }
     },
     "/health": {
       "get": {
         "tags": ["Observabilidade"],
-        "summary": "Health Check com Readiness e Liveness",
-        "description": "Verifica banco MySQL e comunicação com o Auth Service. Retorna 200 se saudável e 503 se indisponível.",
-        "responses": {
-          "200": { "description": "Serviço totalmente operacional" },
-          "503": { "description": "Falha em dependência (banco de dados ou serviço de autenticação)" }
-        }
+        "summary": "Health check de todas as dependências (MariaDB, Auth, Redis Streams, MinIO)",
+        "responses": { "200": { "description": "Todos os serviços saudáveis" } }
       }
     },
     "/metrics": {
       "get": {
         "tags": ["Observabilidade"],
-        "summary": "Métricas Prometheus",
-        "description": "Métricas de contagem de requisições por rota/status, latência e recursos no formato padrão Prometheus.",
-        "responses": {
-          "200": { "description": "Exposição de métricas em texto compatível com Prometheus" }
-        }
+        "summary": "Métricas no padrão Prometheus (OpenMetrics)",
+        "responses": { "200": { "description": "Métricas do sistema" } }
       }
     }
   }
 }
-
