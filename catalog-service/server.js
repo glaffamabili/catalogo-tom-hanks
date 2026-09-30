@@ -3,6 +3,8 @@ const mysql = require('mysql2/promise');
 const cookieSession = require('cookie-session');
 const fetch = require('node-fetch');
 const path = require('path');
+const Minio = require('minio');
+const multer = require('multer');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -11,6 +13,7 @@ app.set('trust proxy', 1);
 const metrics = {
   requestsTotal: {},
   requestDurations: [],
+  photosUploaded: 0,
   startTime: Date.now()
 };
 
@@ -46,7 +49,51 @@ const pool = mysql.createPool({
   connectionLimit: 10
 });
 
-// Inicialização automática das tabelas
+// Configuração do Object Storage MinIO (Atividade 6)
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'minio';
+const MINIO_PORT = parseInt(process.env.MINIO_PORT) || 9000;
+const MINIO_ROOT_USER = process.env.MINIO_ROOT_USER || 'minioadmin';
+const MINIO_ROOT_PASSWORD = process.env.MINIO_ROOT_PASSWORD || 'minioadmin';
+const MINIO_BUCKET = process.env.MINIO_BUCKET || 'perfil-fotos';
+
+const minioClient = new Minio.Client({
+  endPoint: MINIO_ENDPOINT,
+  port: MINIO_PORT,
+  useSSL: false,
+  accessKey: MINIO_ROOT_USER,
+  secretKey: MINIO_ROOT_PASSWORD
+});
+
+async function initMinio() {
+  try {
+    const exists = await minioClient.bucketExists(MINIO_BUCKET);
+    if (!exists) {
+      await minioClient.makeBucket(MINIO_BUCKET);
+      console.log(`✅ [MinIO] Bucket "${MINIO_BUCKET}" criado com sucesso.`);
+    } else {
+      console.log(`✅ [MinIO] Bucket "${MINIO_BUCKET}" verificado.`);
+    }
+  } catch (err) {
+    console.warn('⚠️ [MinIO Warning] Falha ao verificar bucket MinIO:', err.message);
+  }
+}
+initMinio();
+
+// Configuração do Multer para Upload de Imagens na Memória (Validação de tipo e tamanho)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // Máximo 5MB
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (tiposPermitidos.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato inválido. Apenas imagens (JPEG, PNG, WEBP, GIF) são permitidas.'), false);
+    }
+  }
+});
+
+// Inicialização automática das tabelas e migração de colunas
 async function initDb() {
   try {
     await pool.query(`
@@ -71,7 +118,12 @@ async function initDb() {
         INDEX (tmdb_movie_id)
       ) ENGINE=InnoDB;
     `);
-    console.log('Tabelas do Catálogo verificadas/inicializadas com sucesso.');
+
+    // Migração de colunas para fotos de perfil e biografia (Atividade 6)
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN foto_chave VARCHAR(255) NULL'); } catch(e) {}
+    try { await pool.query('ALTER TABLE usuarios ADD COLUMN bio TEXT NULL'); } catch(e) {}
+
+    console.log('Tabelas e colunas do Catálogo e Perfil inicializadas com sucesso.');
   } catch (err) {
     console.error('Erro ao inicializar tabelas no catálogo:', err);
   }
@@ -82,25 +134,16 @@ const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:30
 const LOG_SERVICE_URL = process.env.LOG_SERVICE_URL || 'http://log-service:3000';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
-// Helper assíncrono para despacho de eventos de auditoria ao log-service (Redis Streams)
 async function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
   try {
-    fetch(`${LOG_SERVICE_URL}/logs`, {
+    await fetch(`${LOG_SERVICE_URL}/logs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        usuario_id,
-        usuario_nome,
-        usuario_email,
-        acao,
-        detalhes,
-        ip,
-        timestamp: new Date().toISOString()
-      }),
-      timeout: 2500
-    }).catch(err => console.warn('[Audit Warning] Falha ao enviar log para log-service:', err.message));
+      body: JSON.stringify({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }),
+      timeout: 3000
+    });
   } catch (err) {
-    console.warn('[Audit Warning]', err.message);
+    console.warn('⚠️ [Log Service Warning] Falha ao enviar log de auditoria:', err.message);
   }
 }
 
@@ -125,21 +168,6 @@ const exigeAdmin = async (req, res, next) => {
     }
     const user = await response.json();
     if (user.role !== 'admin') {
-      // Registra a tentativa negada 403 no Redis Streams (auditoria de segurança valiosa)
-      registrarLogAuditoria({
-        usuario_id: user.id,
-        usuario_nome: user.nome,
-        usuario_email: user.email,
-        acao: 'ACESSO_NEGADO_403',
-        detalhes: {
-          rota_tentada: req.originalUrl,
-          metodo: req.method,
-          papel_usuario: user.role,
-          motivo: 'Tentativa de acesso a recurso restrito de administrador'
-        },
-        ip: req.ip
-      });
-
       // Enforcement no Backend: Retorna 403 Forbidden
       return res.status(403).json({ 
         error: 'Acesso negado (403 Forbidden): Esta ação é restrita a administradores.' 
@@ -224,24 +252,178 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  const userId = req.session.userId;
-  registrarLogAuditoria({
-    usuario_id: userId,
-    acao: 'LOGOUT',
-    detalhes: { motivo: 'Logout voluntário do usuário' },
-    ip: req.ip
-  });
   req.session = null;
   res.json({ success: true });
 });
 
 app.get('/api/me', exigeLogin, async (req, res) => {
   try {
-    const response = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
-    const data = await response.json();
-    res.status(response.status).json(data);
+    const [rows] = await pool.query(
+      'SELECT id, nome, email, role, bio, foto_chave FROM usuarios WHERE id = ?',
+      [req.session.userId]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: 'Usuário não encontrado.' });
+    const user = rows[0];
+    res.json({
+      ...user,
+      foto_url: user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null
+    });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao validar perfil no Auth Service.' });
+  }
+});
+
+// ==========================================
+// ROTAS DE PERFIL & OBJECT STORAGE MINIO (Atividade 6)
+// ==========================================
+
+// 1. Obter perfil completo do usuário logado (com favoritos e bio)
+app.get('/api/profile', exigeLogin, async (req, res) => {
+  try {
+    const [userRows] = await pool.query(
+      'SELECT id, nome, email, role, bio, foto_chave, criado_em FROM usuarios WHERE id = ?',
+      [req.session.userId]
+    );
+    if (userRows.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const user = userRows[0];
+
+    const [favRows] = await pool.query(
+      'SELECT tmdb_movie_id, titulo, poster_path, criado_em FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC',
+      [req.session.userId]
+    );
+
+    const [commRows] = await pool.query(
+      'SELECT COUNT(*) AS total FROM comentarios WHERE usuario_id = ?',
+      [req.session.userId]
+    );
+
+    res.json({
+      ...user,
+      foto_url: user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null,
+      total_favoritos: favRows.length,
+      total_comentarios: commRows[0].total,
+      favoritos: favRows
+    });
+  } catch (err) {
+    console.error('Erro ao carregar perfil:', err);
+    res.status(500).json({ error: 'Erro ao carregar perfil do usuário.' });
+  }
+});
+
+// 2. Obter perfil público de outro usuário
+app.get('/api/profile/:id', exigeLogin, async (req, res) => {
+  try {
+    const [userRows] = await pool.query(
+      'SELECT id, nome, role, bio, foto_chave, criado_em FROM usuarios WHERE id = ?',
+      [req.params.id]
+    );
+    if (userRows.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const user = userRows[0];
+
+    const [favRows] = await pool.query(
+      'SELECT tmdb_movie_id, titulo, poster_path, criado_em FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC',
+      [req.params.id]
+    );
+
+    res.json({
+      ...user,
+      foto_url: user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null,
+      total_favoritos: favRows.length,
+      favoritos: favRows
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar perfil público.' });
+  }
+});
+
+// 3. Atualizar Dados do Perfil (Enforcement no Servidor: cada um só edita o próprio perfil!)
+app.put('/api/profile', exigeLogin, async (req, res) => {
+  const { nome, bio } = req.body;
+  if (!nome || !nome.trim()) return res.status(400).json({ error: 'Nome não pode ser vazio.' });
+
+  try {
+    // ENFORCEMENT DE SEGURANÇA: Sempre usa req.session.userId da sessão autenticada
+    await pool.query(
+      'UPDATE usuarios SET nome = ?, bio = ? WHERE id = ?',
+      [nome.trim(), (bio || '').trim(), req.session.userId]
+    );
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      acao: 'ATUALIZAR_PERFIL',
+      detalhes: { novo_nome: nome.trim(), bio_atualizada: !!bio },
+      ip: req.ip
+    });
+
+    res.json({ success: true, message: 'Perfil atualizado com sucesso!' });
+  } catch (err) {
+    console.error('Erro ao atualizar perfil:', err);
+    res.status(500).json({ error: 'Erro ao atualizar dados do perfil.' });
+  }
+});
+
+// 4. Upload de Foto de Perfil para o Object Storage MinIO
+app.post('/api/profile/upload-photo', exigeLogin, upload.single('foto'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Nenhum arquivo de imagem enviado.' });
+  }
+
+  const userId = req.session.userId;
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const objectKey = `avatar_user_${userId}_${Date.now()}${ext.toLowerCase()}`;
+
+  try {
+    // 1. Gravação do arquivo binário no Object Storage MinIO
+    await minioClient.putObject(
+      MINIO_BUCKET,
+      objectKey,
+      req.file.buffer,
+      req.file.size,
+      { 'Content-Type': req.file.mimetype }
+    );
+
+    // 2. Gravação apenas da referência (chave do objeto) no MariaDB
+    await pool.query(
+      'UPDATE usuarios SET foto_chave = ? WHERE id = ?',
+      [objectKey, userId]
+    );
+
+    metrics.photosUploaded++;
+
+    // 3. Registro de auditoria no Redis Streams
+    registrarLogAuditoria({
+      usuario_id: userId,
+      acao: 'UPLOAD_FOTO_PERFIL',
+      detalhes: {
+        object_key: objectKey,
+        tamanho_bytes: req.file.size,
+        mime_type: req.file.mimetype,
+        bucket: MINIO_BUCKET
+      },
+      ip: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'Foto de perfil enviada e salva no MinIO com sucesso!',
+      foto_chave: objectKey,
+      foto_url: `/api/profile/avatar/${objectKey}`
+    });
+  } catch (err) {
+    console.error('Erro no upload para o MinIO:', err);
+    res.status(500).json({ error: 'Falha ao processar upload no Object Storage MinIO.', details: err.message });
+  }
+});
+
+// 5. Servir Imagem de Perfil do MinIO
+app.get('/api/profile/avatar/:key', async (req, res) => {
+  const objectKey = req.params.key;
+  try {
+    const stream = await minioClient.getObject(MINIO_BUCKET, objectKey);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    stream.pipe(res);
+  } catch (err) {
+    res.status(404).json({ error: 'Imagem não encontrada no storage.' });
   }
 });
 
@@ -275,14 +457,6 @@ app.post('/api/favorites', exigeLogin, async (req, res) => {
   try {
     await pool.query('INSERT INTO favoritos (usuario_id, tmdb_movie_id, titulo, poster_path) VALUES (?, ?, ?, ?)', 
       [req.session.userId, tmdb_movie_id, titulo, poster_path]);
-    
-    registrarLogAuditoria({
-      usuario_id: req.session.userId,
-      acao: 'FAVORITAR_FILME',
-      detalhes: { tmdb_movie_id, titulo },
-      ip: req.ip
-    });
-
     res.json({ success: true });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Filme já favoritado.' });
@@ -295,12 +469,19 @@ app.get('/api/comments', exigeLogin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT c.id, c.usuario_id, c.tmdb_movie_id, c.texto, c.criado_em,
-             u.nome AS autor_nome, u.email AS autor_email, u.role AS autor_role
+             u.nome AS autor_nome, u.email AS autor_email, u.role AS autor_role,
+             u.foto_chave AS autor_foto_chave, u.bio AS autor_bio
       FROM comentarios c
       LEFT JOIN usuarios u ON c.usuario_id = u.id
       ORDER BY c.criado_em DESC
     `);
-    res.json(rows);
+
+    const commentsWithAvatars = rows.map(c => ({
+      ...c,
+      autor_foto_url: c.autor_foto_chave ? `/api/profile/avatar/${c.autor_foto_chave}` : null
+    }));
+
+    res.json(commentsWithAvatars);
   } catch (err) {
     console.error('Erro ao carregar comentários:', err);
     res.status(500).json({ error: 'Erro ao carregar comentários.' });
@@ -312,18 +493,10 @@ app.post('/api/comments', exigeLogin, async (req, res) => {
   const { tmdb_movie_id, texto } = req.body;
   if (!texto || !texto.trim()) return res.status(400).json({ error: 'Comentário vazio.' });
   try {
-    const [result] = await pool.query(
+    await pool.query(
       'INSERT INTO comentarios (usuario_id, tmdb_movie_id, texto) VALUES (?, ?, ?)',
       [req.session.userId, tmdb_movie_id, texto.trim()]
     );
-
-    registrarLogAuditoria({
-      usuario_id: req.session.userId,
-      acao: 'COMENTAR_FILME',
-      detalhes: { comentario_id: result.insertId, tmdb_movie_id, preview: texto.trim().substring(0, 60) },
-      ip: req.ip
-    });
-
     res.json({ success: true, message: 'Comentário registrado com sucesso.' });
   } catch (err) {
     console.error('Erro ao comentar:', err);
@@ -353,41 +526,12 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
 
     // Validação de Autorização (Enforcement no Servidor)
     if (!isOwner && !isAdmin) {
-      // Registra tentativa negada no log de auditoria
-      registrarLogAuditoria({
-        usuario_id: req.session.userId,
-        usuario_nome: user.nome,
-        usuario_email: user.email,
-        acao: 'ACESSO_NEGADO_403',
-        detalhes: {
-          motivo: 'Tentativa de exclusão de comentário pertencente a outro usuário',
-          comentario_id: commentId,
-          autor_comentario_id: comment.usuario_id
-        },
-        ip: req.ip
-      });
-
       return res.status(403).json({
         error: 'Acesso negado (403 Forbidden): Apenas o autor do comentário ou um administrador podem excluir este comentário.'
       });
     }
 
     await pool.query('DELETE FROM comentarios WHERE id = ?', [commentId]);
-
-    // Registra log do evento (Distinção entre Exclusão Própria vs Moderação de Admin)
-    registrarLogAuditoria({
-      usuario_id: req.session.userId,
-      usuario_nome: user.nome,
-      usuario_email: user.email,
-      acao: isAdmin && !isOwner ? 'MODERACAO_EXCLUIR_COMENTARIO' : 'EXCLUIR_COMENTARIO_PROPRIO',
-      detalhes: {
-        comentario_id: commentId,
-        autor_original_id: comment.usuario_id,
-        acao_por: isAdmin && !isOwner ? 'admin (moderação)' : 'autor'
-      },
-      ip: req.ip
-    });
-
     res.json({
       success: true,
       message: isAdmin && !isOwner
@@ -425,21 +569,18 @@ app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   }
 });
 
-// Consulta de Logs de Auditoria do Redis Streams (Exclusivo Admin)
-app.get('/api/logs', exigeAdmin, async (req, res) => {
-  const limit = req.query.limit || 100;
-  const acao = req.query.acao || '';
+// 3. Consultar logs de auditoria no Log Service (Exclusivo Admin)
+app.get('/api/admin/logs', exigeAdmin, async (req, res) => {
   try {
-    const url = `${LOG_SERVICE_URL}/logs?limit=${limit}${acao ? `&acao=${encodeURIComponent(acao)}` : ''}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Falha ao consultar logs de auditoria no log-service.' });
-    }
+    const limit = req.query.limit || 100;
+    const acao = req.query.acao || '';
+    const query = new URLSearchParams({ limit, ...(acao ? { acao } : {}) }).toString();
+    const response = await fetch(`${LOG_SERVICE_URL}/logs?${query}`);
     const data = await response.json();
-    res.json(data);
+    res.status(response.status).json(data);
   } catch (err) {
     console.error('Erro ao buscar logs de auditoria:', err);
-    res.status(500).json({ error: 'Erro de comunicação com o log-service: ' + err.message });
+    res.status(500).json({ error: 'Erro ao consultar logs de auditoria no Log Service.' });
   }
 });
 
@@ -450,9 +591,10 @@ app.get('/health', async (req, res) => {
   let dbError = null;
   let authStatus = 'DOWN';
   let authError = null;
-
   let logStatus = 'DOWN';
   let logError = null;
+  let minioStatus = 'DOWN';
+  let minioError = null;
 
   // 1. Testa conectividade com MariaDB / MySQL
   try {
@@ -486,6 +628,16 @@ app.get('/health', async (req, res) => {
     logError = err.message;
   }
 
+  // 4. Testa conectividade com o MinIO Object Storage
+  try {
+    const minioBucketCheck = await minioClient.bucketExists(MINIO_BUCKET);
+    if (minioBucketCheck !== undefined) {
+      minioStatus = 'UP';
+    }
+  } catch (err) {
+    minioError = err.message;
+  }
+
   const isHealthy = (dbStatus === 'UP' && authStatus === 'UP');
   const responseTimeMs = Date.now() - startTime;
   const uptimeSeconds = Math.floor(process.uptime());
@@ -515,6 +667,12 @@ app.get('/health', async (req, res) => {
         status: logStatus,
         url: LOG_SERVICE_URL,
         ...(logError && { error: logError })
+      },
+      minioStorage: {
+        status: minioStatus,
+        endpoint: `${MINIO_ENDPOINT}:${MINIO_PORT}`,
+        bucket: MINIO_BUCKET,
+        ...(minioError && { error: minioError })
       }
     }
   };
@@ -625,7 +783,7 @@ app.get('/health', async (req, res) => {
 
       <div class="service-card">
         <div class="service-info">
-          <div class="service-icon" style="color: #dc2626;"><i class="fa-solid fa-list-check"></i></div>
+          <div class="service-icon" style="color: #ef4444;"><i class="fa-solid fa-list-check"></i></div>
           <div>
             <h4 style="font-size: 14px; font-weight: 700;">Microsserviço de Logs & Auditoria (Redis Streams)</h4>
             <p style="font-size: 12px; color: #64748b;">Comunicação interna: ${LOG_SERVICE_URL}</p>
@@ -633,6 +791,19 @@ app.get('/health', async (req, res) => {
         </div>
         <span class="status-badge ${logStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
           ${logStatus}
+        </span>
+      </div>
+
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #10b981;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Object Storage MinIO (Fotos de Perfil)</h4>
+            <p style="font-size: 12px; color: #64748b;">Host: ${MINIO_ENDPOINT}:${MINIO_PORT} • Bucket: ${MINIO_BUCKET}</p>
+          </div>
+        </div>
+        <span class="status-badge ${minioStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${minioStatus}
         </span>
       </div>
 

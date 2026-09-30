@@ -4,6 +4,32 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const http = require('http');
+
+const LOG_SERVICE_HOST = process.env.LOG_SERVICE_HOST || 'log-service';
+const LOG_SERVICE_PORT = parseInt(process.env.LOG_SERVICE_PORT) || 3000;
+
+function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
+  try {
+    const data = JSON.stringify({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip });
+    const req = http.request({
+      hostname: LOG_SERVICE_HOST,
+      port: LOG_SERVICE_PORT,
+      path: '/logs',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      },
+      timeout: 3000
+    }, (res) => {
+      res.resume();
+    });
+    req.on('error', () => {});
+    req.write(data);
+    req.end();
+  } catch (err) {}
+}
 
 const app = express();
 app.use(express.json());
@@ -27,31 +53,6 @@ app.use((req, res, next) => {
   });
   next();
 });
-
-const LOG_SERVICE_URL = process.env.LOG_SERVICE_URL || 'http://log-service:3000';
-
-// Helper assíncrono para envio de eventos de auditoria ao log-service (Redis Streams)
-async function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
-  try {
-    if (typeof fetch === 'function') {
-      fetch(`${LOG_SERVICE_URL}/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          usuario_id,
-          usuario_nome,
-          usuario_email,
-          acao,
-          detalhes,
-          ip,
-          timestamp: new Date().toISOString()
-        })
-      }).catch(err => console.warn('[Audit Warning] Falha no log-service:', err.message));
-    }
-  } catch (err) {
-    console.warn('[Audit Warning]', err.message);
-  }
-}
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -167,7 +168,6 @@ app.post('/register', async (req, res) => {
       }
     }
 
-    // Registra log de auditoria
     registrarLogAuditoria({
       usuario_id: result.insertId,
       usuario_nome: nome,
@@ -190,31 +190,12 @@ app.post('/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-    if (rows.length === 0) {
-      registrarLogAuditoria({
-        usuario_email: email,
-        acao: 'LOGIN_FALHA',
-        detalhes: { motivo: 'E-mail não cadastrado' },
-        ip: req.ip
-      });
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
+    if (rows.length === 0) return res.status(401).json({ error: 'Credenciais inválidas.' });
 
     const user = rows[0];
     const match = await bcrypt.compare(senha, user.senha_hash);
-    if (!match) {
-      registrarLogAuditoria({
-        usuario_id: user.id,
-        usuario_nome: user.nome,
-        usuario_email: email,
-        acao: 'LOGIN_FALHA',
-        detalhes: { motivo: 'Senha incorreta' },
-        ip: req.ip
-      });
-      return res.status(401).json({ error: 'Credenciais inválidas.' });
-    }
+    if (!match) return res.status(401).json({ error: 'Credenciais inválidas.' });
 
-    // Registra log de auditoria de login com sucesso
     registrarLogAuditoria({
       usuario_id: user.id,
       usuario_nome: user.nome,
@@ -237,7 +218,7 @@ app.post('/forgot-password', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'E-mail não informado.' });
 
   try {
-    const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    const [rows] = await pool.query('SELECT id, nome FROM usuarios WHERE email = ?', [email]);
     if (rows.length === 0) return res.status(404).json({ error: 'E-mail não encontrado.' });
 
     const userId = rows[0].id;
@@ -249,6 +230,13 @@ app.post('/forgot-password', async (req, res) => {
       'INSERT INTO reset_tokens (token, usuario_id, criado_em, expira_em, usado) VALUES (?, ?, ?, ?, 0)',
       [token, userId, agora, expiraEm]
     );
+
+    registrarLogAuditoria({
+      usuario_id: userId,
+      usuario_email: email,
+      acao: 'SOLICITACAO_RECUPERACAO_SENHA',
+      ip: req.ip
+    });
 
     const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:8200';
     const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
@@ -281,14 +269,6 @@ app.post('/forgot-password', async (req, res) => {
           <p style="font-size: 12px; color: #777;">Se você não solicitou essa alteração, ignore este e-mail.</p>
         </div>
       `
-    });
-
-    registrarLogAuditoria({
-      usuario_id: userId,
-      usuario_email: email,
-      acao: 'SOLICITACAO_RECUPERACAO_SENHA',
-      detalhes: { expira_em: expiraEm },
-      ip: req.ip
     });
 
     res.json({ success: true, message: 'E-mail de recuperação enviado com sucesso!' });
@@ -325,8 +305,7 @@ app.post('/reset-password', async (req, res) => {
 
     registrarLogAuditoria({
       usuario_id: resetRecord.usuario_id,
-      acao: 'REDEFINICAO_SENHA',
-      detalhes: { motivo: 'Senha redefinida com sucesso via token de e-mail' },
+      acao: 'REDEFINICAO_SENHA_SUCESSO',
       ip: req.ip
     });
 
@@ -372,8 +351,8 @@ app.patch('/users/:id/role', async (req, res) => {
 
     registrarLogAuditoria({
       usuario_id: req.params.id,
-      acao: 'ALTERACAO_PAPEL',
-      detalhes: { novo_papel: role, alterado_por: 'admin' },
+      acao: 'ALTERACAO_PAPEL_RBAC',
+      detalhes: { novo_papel: role },
       ip: req.ip
     });
 

@@ -1,151 +1,151 @@
-# 🎬 Catálogo de Filmes — Tom Hanks
+# 🎬 Catálogo de Filmes & Rede Social — Tom Hanks
 > **ISW055 · Introdução à Computação em Nuvem**  
 > Professor: [@siriani](https://github.com/siriani) — [github.com/siriani](https://github.com/siriani)  
 > Aplicação em Produção: [https://amabili-flor-isw055.lapps.studio/](https://amabili-flor-isw055.lapps.studio/)
 
 ---
 
-## 📑 Sumário das Implementações
-1. [Atividade 5: Logs e Auditoria com Redis Streams](#-1-atividade-5-logs-e-auditoria-com-redis-streams)
-2. [Atividade 4: Controle de Acesso por Papel (RBAC)](#-2-controle-de-acesso-por-papel-rbac)
-3. [Documentação Swagger / OpenAPI 3.0](#-3-documentação-swagger--openapi-30)
-4. [CI/CD com GitHub Actions](#-4-cicd-com-github-actions)
-5. [Observabilidade: Health Checks e Métricas Prometheus](#-5-observabilidade-health-checks-e-métricas)
-6. [Como Executar a Stack](#-6-como-executar-a-stack)
+## 📑 Sumário das Atividades & Arquitetura
+
+1. [Atividade 6 · Armazenamento de Objetos (MinIO) & Perfil de Usuário](#-1-atividade-6--armazenamento-de-objetos-minio--perfil-de-usuário)
+2. [Atividade 5 · Logs e Auditoria com Redis Streams (`log-service`)](#-2-atividade-5--logs-e-auditoria-com-redis-streams)
+3. [Atividade 4 · Controle de Acesso por Papel (RBAC de Verdade)](#-3-atividade-4--controle-de-acesso-por-papel-rbac)
+4. [Documentação OpenAPI / Swagger UI](#-4-documentação-openapi--swagger-ui)
+5. [CI/CD com GitHub Actions](#-5-cicd-com-github-actions)
+6. [Observabilidade: Health Checks e Métricas Prometheus](#-6-observabilidade-health-checks-e-métricas)
+7. [Como Executar Localmente](#-7-como-executar-localmente)
 
 ---
 
-## 📋 1. Atividade 5: Logs e Auditoria com Redis Streams
+## 📦 1. Atividade 6 · Armazenamento de Objetos (MinIO) & Perfil de Usuário
 
-Para garantir rastreabilidade completa das ações no sistema ("quem fez o quê, e quando"), foi construído um microsserviço dedicado de logs ([`log-service`](./log-service/)) desacoplado do banco relacional, utilizando **Redis Streams** como mecanismo de alta performance para armazenamento ordenado no tempo.
+Nesta atividade, o catálogo evolui para uma **rede social de cinéfilos**, permitindo que cada usuário tenha uma página de perfil completa com foto de avatar, biografia personalizada, estatísticas de uso e a lista dos seus filmes favoritos salvos.
+
+### 🏛️ Arquitetura: Por que a imagem NÃO mora no Banco Relacional?
+
+Salvar arquivos binários diretamente em colunas do tipo `BLOB` no MariaDB/MySQL é uma má prática de engenharia em sistemas modernos:
+- **Sobrecarga e Inchaço do Banco:** Imagens de alguns megabytes inflam o arquivo de dados das tabelas, degradando o buffer pool e a memória cache do banco de dados.
+- **Backups e Replicação Lentos:** Realizar `mysqldump` ou sincronizar réplicas contendo gigabytes de dados binários torna operações de rotina demoradas e arriscadas.
+- **Desempenho de I/O:** Bancos relacionais são otimizados para consultas estruturadas de linhas pequenas, enquanto o **Object Storage (MinIO / S3 / GCS)** foi projetado especificamente para armazenamento e recuperação de alta taxa de transferência de arquivos binários não estruturados.
 
 ```
-┌─────────────────┐       ┌─────────────────┐
-│ Catalog Service │       │  Auth Service   │
-└────────┬────────┘       └────────┬────────┘
-         │ (POST /logs)            │ (POST /logs)
-         └────────────┬────────────┘
-                      ▼
-             ┌─────────────────┐
-             │   Log Service   │
-             └────────┬────────┘
-                      │ XADD audit_logs *
-                      ▼
-             ┌─────────────────┐
-             │  Redis Stream   │ (audit_logs)
-             └─────────────────┘
+[ Usuário ] ──( 1. Envia Imagem multipart/form-data )──► [ Catalog Service ]
+                                                              │          │
+                     ┌────────────────────────────────────────┘          │
+   ( 2. Grava binário no Bucket "perfil-fotos" )                         │ ( 3. Grava apenas a CHAVE
+                     │                                                   │      da foto e a bio )
+                     ▼                                                   ▼
+          ┌─────────────────────┐                             ┌────────────────────┐
+          │  MinIO Storage S3   │                             │  MariaDB / MySQL   │
+          │ (Objeto: avatar_*)  │                             │ (foto_chave, bio)  │
+          └─────────────────────┘                             └────────────────────┘
+                     ▲                                                   ▲
+                     │ ( 4. Lê Stream com Cache HTTP )                   │
+                     └───────────────────────────────────────────────────┘
 ```
 
-### 1.1 Por que Redis Streams?
-- **Alto volume e baixa latência**: Logs de auditoria têm alta taxa de escrita e leitura esporádica.
-- **Estrutura nativa de log**: O comando `XADD audit_logs * ...` gera IDs ordenados cronologicamente por milissegundo (`timestamp-sequence`), garantindo ordenação perfeita.
-- **Consultas eficientes**: O comando `XREVRANGE audit_logs + - COUNT N` permite que a administração consulte os últimos eventos instantaneamente sem sobrecarregar o banco de dados da aplicação.
+### 🎯 Decisão Arquitetural de Entrega da Imagem (Requisito 3)
 
-### 1.2 Eventos Capturados na Auditoria:
-| Evento (`acao`) | Origem | Descrição & Detalhes |
-| :--- | :--- | :--- |
-| `CADASTRO_USUARIO` | `auth-service` | Registro de nova conta com o papel inicial atribuído. |
-| `LOGIN_SUCESSO` | `auth-service` | Login autenticado com sucesso via hash bcrypt. |
-| `LOGIN_FALHA` | `auth-service` | Tentativa de login incorreta (senha errada ou e-mail inexistente). |
-| `SOLICITACAO_RECUPERACAO_SENHA` | `auth-service` | Disparo de e-mail com token de reset de senha. |
-| `REDEFINICAO_SENHA` | `auth-service` | Conclusão da alteração de senha via token válido. |
-| `ALTERACAO_PAPEL` | `auth-service` | Promoção ou rebaixamento de papel de usuário por um admin. |
-| `LOGOUT` | `catalog-service` | Encerramento voluntário de sessão pelo usuário. |
-| `FAVORITAR_FILME` | `catalog-service` | Filme adicionado à lista de favoritos (`tmdb_movie_id`, `titulo`). |
-| `COMENTAR_FILME` | `catalog-service` | Publicação de comentário comunitário em um filme. |
-| `EXCLUIR_COMENTARIO_PROPRIO` | `catalog-service` | Remoção de comentário feita pelo próprio autor. |
-| `MODERACAO_EXCLUIR_COMENTARIO`| `catalog-service` | **Ação de Moderação:** Administrador exclui comentário de outro usuário. |
-| `ACESSO_NEGADO_403` | `catalog-service` | **Auditoria de Segurança:** Tentativa de ação não autorizada (ex: usuário comum tentando excluir comentário de outro ou acessar rotas de admin). |
+Para a entrega das imagens de volta ao navegador, analisamos as abordagens possíveis:
 
-### 1.3 Estrutura de Cada Log (Schema):
-```json
-{
-  "id": "1727710200000-0",
-  "usuario_id": 42,
-  "usuario_nome": "Maria Silva",
-  "usuario_email": "maria@teste.com",
-  "acao": "ACESSO_NEGADO_403",
-  "detalhes": {
-    "motivo": "Tentativa de exclusão de comentário pertencente a outro usuário",
-    "comentario_id": 10,
-    "autor_comentario_id": 2
-  },
-  "ip": "187.12.34.56",
-  "timestamp": "2026-09-30T15:30:00.000Z"
-}
-```
+1. **Bucket com Leitura Pública:** Exporia a porta 9000 do MinIO diretamente à internet aberta, exigindo expor múltiplos serviços ou configurar regras de subdomínio e TLS adicionais.
+2. **URLs Pré-assinadas Temporárias:** Excelente para arquivos estritamente privados com expiração curta, porém gera URLs longas com tokens temporários que quebram o cache HTTP padrão dos navegadores em fotos de perfil e comentários.
+3. **Decisão Adotada — Reverse Proxy com Streaming Seguro e Cache HTTP (`GET /api/profile/avatar/:key`):**
+   - O MinIO permanece **completamente isolado** na rede interna do Docker (`networks: app-network`), sem portas públicas abertas ao host.
+   - O Catálogo atua como proxy via streaming (`minioClient.getObject`), transmitindo o arquivo binário diretamente ao cliente com o header `Cache-Control: public, max-age=86400`.
+   - **Vantagens:** Segurança total de rede, compatibilidade nativa com o domínio reverso em produção ([`*.lapps.studio`](https://amabili-flor-isw055.lapps.studio/)), sem risco de CORS ou mismatch de portas, e aceleração via cache no cliente.
 
-### 1.4 Endpoint de Consulta e Visualização (Exclusivo Admin):
-- **Endpoint Backend:** `GET /api/logs?limit=100` (Protegido por `exigeAdmin`, retorna `403 Forbidden` para usuários comuns).
-- **Interface Web:** Aba dedicada **"📋 Auditoria de Logs"** no catálogo com filtros rápidos por categoria (Logins, Favoritos, Comentários, Moderações e Alertas 403).
+### 🛡️ Enforcement de Segurança no Servidor (Requisito 4)
+
+- **Edição Restrita ao Dono:** As rotas `PUT /api/profile` e `POST /api/profile/upload-photo` utilizam **exclusivamente** o `req.session.userId` recuperado da sessão segura validada no servidor. Qualquer tentativa de forjar identificadores no corpo da requisição é ignorada.
+- **Validação de Uploads com Multer:** Validação rigorosa de MIME type (`image/jpeg`, `image/png`, `image/webp`, `image/gif`) e limite rígido de **5MB por imagem**. Arquivos inválidos ou executáveis são rejeitados com código `400 Bad Request`.
 
 ---
 
-## 🔐 2. Controle de Acesso por Papel (RBAC)
+## 📋 2. Atividade 5 · Logs e Auditoria com Redis Streams
 
-O sistema implementa o modelo **RBAC (Role-Based Access Control)** com enforcement centralizado no backend (Padrão A).
+Toda ação relevante do sistema gera um evento rastreável no microsserviço dedicado `log-service`, persistido em **Redis Streams** (`audit_logs`) com ordenação temporal imutável (`XADD` e `XREVRANGE`).
 
-| Recurso / Ação | Endpoint / Método | Papel `usuario` | Papel `admin` | Regra de Autorização |
-| :--- | :--- | :---: | :---: | :--- |
-| **Autenticação** | `/api/register`<br>`/api/login`<br>`/api/forgot-password` | ✅ Permitido | ✅ Permitido | Login, cadastro e recuperação de senha. |
-| **Catálogo de Filmes** | `GET /api/movies` | ✅ Permitido | ✅ Permitido | Listagem de filmes via TMDB API. |
-| **Favoritos** | `GET /api/favorites`<br>`POST /api/favorites` | ✅ Permitido | ✅ Permitido | Gerenciar filmes favoritos próprios. |
-| **Comentar em Filmes** | `POST /api/comments`<br>`GET /api/comments` | ✅ Permitido | ✅ Permitido | Postar e visualizar comentários da comunidade. |
-| **Excluir Próprio Comentário** | `DELETE /api/comments/:id` | ✅ Permitido | ✅ Permitido | O usuário pode excluir apenas seu próprio comentário. |
-| **Moderação de Comentários** | `DELETE /api/comments/:id` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Administrador pode moderar/excluir qualquer comentário. |
-| **Listar Todos os Usuários** | `GET /api/users` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Painel restrito a administradores. |
-| **Alterar Papel de Usuário** | `PATCH /api/users/:id/role` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Promover/rebaixar papéis no sistema. |
-| **Consultar Logs de Auditoria** | `GET /api/logs` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Acesso restrito ao histórico de auditoria no Redis. |
+### Eventos Auditados no Stream:
+- `LOGIN_SUCESSO`: Identificador do usuário e papel.
+- `CADASTRO_USUARIO`: Criação de conta e perfil RBAC atribuído.
+- `UPLOAD_FOTO_PERFIL`: Chave do objeto no MinIO, bucket, tamanho em bytes e MIME type.
+- `ATUALIZAR_PERFIL`: Alterações de nome e biografia.
+- `ALTERACAO_PAPEL_RBAC`: Promoções e rebaixamentos de permissão realizados por administradores.
+- `MODERACAO_COMENTARIO`: Remoções de comentários realizadas pela moderação.
+
+A consulta de logs é restrita a administradores através de `GET /api/admin/logs`, protegida pelo middleware RBAC do servidor.
 
 ---
 
-## 📄 3. Documentação Swagger / OpenAPI 3.0
+## 🔐 3. Atividade 4 · Controle de Acesso por Papel (RBAC)
 
-Todos os endpoints dos serviços estão documentados sob o padrão **OpenAPI 3.0** com interface interativa Swagger UI:
-- **Catálogo API:** [`/apidocs`](https://amabili-flor-isw055.lapps.studio/apidocs) ou [`/docs`](https://amabili-flor-isw055.lapps.studio/docs)
-- **Especificações OpenAPI:**
-  - [`catalog-service/openapi.json`](./catalog-service/openapi.json)
-  - [`auth-service/openapi.json`](./auth-service/openapi.json)
-  - [`log-service/openapi.json`](./log-service/openapi.json)
+O sistema implementa **RBAC (Role-Based Access Control)** com validação no backend:
 
----
-
-## 🤖 4. CI/CD com GitHub Actions
-
-O repositório possui pipeline de Integração e Entrega Contínua em [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml):
-- **CI:** Executa testes automatizados ([`auth-service/test.js`](./auth-service/test.js), [`catalog-service/test.js`](./catalog-service/test.js) e [`log-service/test.js`](./log-service/test.js)).
-- **CD:** Constrói imagens Docker com tags rastreáveis atreladas ao commit SHA (ex: `sha-abc1234`) e valida a stack com `docker compose build`.
-
----
-
-## 🩺 5. Observabilidade: Health Checks e Métricas
-
-- **Health Checks (`/health` com Liveness & Readiness):**
-  - `catalog-service`: Testa conectividade com MariaDB, `auth-service` e `log-service`.
-  - `auth-service`: Testa conectividade com MariaDB.
-  - `log-service`: Testa conectividade com o Redis.
-  - Suporta Dashboard visual no navegador e JSON para Docker.
-- **Docker `HEALTHCHECK`:** Configurado no [`docker-compose.yml`](./docker-compose.yml) para todos os serviços.
-- **Métricas Prometheus (`/metrics`):** Exposição em formato padrão OpenMetrics com dashboard interativo.
+| Recurso / Rota | Método | Papel `usuario` | Papel `admin` | Regra de Autorização |
+| :--- | :---: | :---: | :---: | :--- |
+| **Perfil Próprio** | `GET, PUT /api/profile` | ✅ | ✅ | Gerencia apenas o próprio perfil (`req.session.userId`). |
+| **Upload de Foto** | `POST /api/profile/upload-photo` | ✅ | ✅ | Salva avatar no MinIO e atualiza `foto_chave`. |
+| **Catálogo & Favoritos** | `GET /api/movies`<br>`GET, POST /api/favorites` | ✅ | ✅ | Consulta e favoritamento de filmes. |
+| **Comunidade** | `GET, POST /api/comments` | ✅ | ✅ | Posta e lê comentários com foto de avatar. |
+| **Excluir Próprio Comentário** | `DELETE /api/comments/:id` | ✅ | ✅ | Autor pode remover seu comentário. |
+| **Moderação Comunitária** | `DELETE /api/comments/:id` | ❌ **403** | ✅ | **Admin:** Modera qualquer comentário. |
+| **Gestão de Usuários** | `GET /api/users` | ❌ **403** | ✅ | **Admin:** Visualiza usuários cadastrados. |
+| **Alteração de Papéis** | `PATCH /api/users/:id/role` | ❌ **403** | ✅ | **Admin:** Promove ou rebaixa usuários. |
+| **Auditoria Redis** | `GET /api/admin/logs` | ❌ **403** | ✅ | **Admin:** Consulta trilha de auditoria. |
 
 ---
 
-## 🚀 6. Como Executar a Stack
+## 📄 4. Documentação OpenAPI / Swagger UI
+
+Todos os microsserviços possuem especificações **OpenAPI 3.0** completas com interface interativa Swagger UI:
+- **Swagger UI Catálogo:** [`/apidocs`](https://amabili-flor-isw055.lapps.studio/apidocs) ou [`/docs`](https://amabili-flor-isw055.lapps.studio/docs)
+- **JSON da Spec:** [`catalog-service/openapi.json`](./catalog-service/openapi.json)
+
+---
+
+## 🤖 5. CI/CD com GitHub Actions
+
+Pipeline automatizado em [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml) disparado a cada `push` na branch `main`:
+1. **CI:** Executa suíte automatizada em todos os serviços (`auth-service/test.js`, `catalog-service/test.js`, `log-service/test.js`).
+2. **CD:** Constrói as imagens Docker multi-stage com tags SHA e `latest`.
+
+---
+
+## 🩺 6. Observabilidade: Health Checks e Métricas
+
+### Health Checks (`/health`)
+Testa conectividade real com as dependências do sistema:
+- MariaDB / MySQL (`SELECT 1`)
+- Auth Service (HTTP Interno)
+- Log Service & Redis Streams (`PING -> PONG`)
+- Object Storage MinIO (`bucketExists('perfil-fotos')`)
+
+### Métricas Prometheus (`/metrics`)
+Métricas de telemetria no padrão OpenMetrics (requisições, latências, memória RSS/Heap, contagem de uploads e eventos de auditoria).
+
+---
+
+## 🚀 7. Como Executar Localmente
+
+### Pré-requisitos
+- Docker e Docker Compose instalados.
+- Node.js 18+ (para execução dos testes).
 
 ```bash
 # 1. Clonar o repositório
 git clone https://github.com/glaffamabili/catalogo-tom-hanks.git
 cd catalogo-tom-hanks
 
-# 2. Executar testes automatizados em todos os microsserviços
-npm test --prefix log-service && npm test --prefix auth-service && npm test --prefix catalog-service
+# 2. Executar suíte de testes de todos os microsserviços
+cd auth-service && npm test && cd ../log-service && npm test && cd ../catalog-service && npm test && cd ..
 
-# 3. Subir todos os serviços com Docker Compose
+# 3. Subir toda a infraestrutura com Docker Compose
 docker compose up -d --build
 ```
 
-### Portas e Endpoints:
-- **Aplicação Principal:** `http://localhost:8200`
+### URLs Locais
+- **Aplicação Web & Perfil:** `http://localhost:8200`
 - **Swagger UI:** `http://localhost:8200/apidocs`
-- **Painel de Health Check:** `http://localhost:8200/health`
-- **Painel de Métricas Prometheus:** `http://localhost:8200/metrics`
+- **Dashboard Health:** `http://localhost:8200/health`
+- **Telemetria / Métricas:** `http://localhost:8200/metrics`
