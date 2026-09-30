@@ -1,0 +1,138 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Log & Audit Service API — Microsserviço de Auditoria com Redis Streams",
+    "description": "Microsserviço dedicado para captura, persistência em Redis Streams (XADD) e consulta (XREVRANGE) de logs de auditoria e segurança de todos os serviços.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Tom Hanks Catalog Team",
+      "url": "https://github.com/glaffamabili/catalogo-tom-hanks"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Servidor do Log Service (Rede Interna Docker)"
+    }
+  ],
+  "tags": [
+    { "name": "Logs de Auditoria", "description": "Registro e consulta de eventos de auditoria" },
+    { "name": "Observabilidade", "description": "Health checks e telemetria do Redis" }
+  ],
+  "paths": {
+    "/logs": {
+      "post": {
+        "tags": ["Logs de Auditoria"],
+        "summary": "Registrar novo evento de auditoria no Redis Stream",
+        "description": "Persiste o evento de auditoria utilizando a estrutura Redis Streams (comando XADD audit_logs *).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["acao"],
+                "properties": {
+                  "usuario_id": { "type": "integer", "example": 1 },
+                  "usuario_nome": { "type": "string", "example": "Maria Silva" },
+                  "usuario_email": { "type": "string", "example": "maria@exemplo.com" },
+                  "acao": { "type": "string", "example": "LOGIN_SUCESSO" },
+                  "detalhes": { "type": "object", "example": { "metodo": "POST", "endpoint": "/api/login" } },
+                  "ip": { "type": "string", "example": "192.168.1.100" },
+                  "timestamp": { "type": "string", "example": "2026-09-30T15:30:00.000Z" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Log gravado com sucesso no Redis Stream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "streamId": { "type": "string", "example": "1727710200000-0" },
+                    "timestamp": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Campo 'acao' ausente" },
+          "500": { "description": "Falha na conexão com o Redis" }
+        }
+      },
+      "get": {
+        "tags": ["Logs de Auditoria"],
+        "summary": "Listar os últimos eventos de auditoria",
+        "description": "Consulta os logs mais recentes armazenados no Redis Stream através de XREVRANGE audit_logs + - COUNT N.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 50 },
+            "description": "Número máximo de registros a retornar"
+          },
+          {
+            "name": "acao",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Filtrar por nome da ação"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de logs de auditoria recuperados do Redis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "example": "1727710200000-0" },
+                      "usuario_id": { "type": "integer" },
+                      "usuario_nome": { "type": "string" },
+                      "usuario_email": { "type": "string" },
+                      "acao": { "type": "string" },
+                      "detalhes": { "type": "object" },
+                      "ip": { "type": "string" },
+                      "timestamp": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Erro ao consultar Redis" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Observabilidade"],
+        "summary": "Health Check do Log Service e Redis",
+        "description": "Realiza ping ativo no Redis. Retorna 200 se operacional ou 503 se o Redis estiver fora do ar.",
+        "responses": {
+          "200": { "description": "Log Service e Redis saudáveis" },
+          "503": { "description": "Redis inacessível ou desconectado" }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Observabilidade"],
+        "summary": "Métricas Prometheus do Log Service",
+        "description": "Exponibiliza contadores de eventos registrados, consultas e telemetria do Redis.",
+        "responses": {
+          "200": { "description": "Métricas no formato padrão Prometheus" }
+        }
+      }
+    }
+  }
+}

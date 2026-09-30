@@ -79,7 +79,30 @@ async function initDb() {
 initDb();
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3000';
+const LOG_SERVICE_URL = process.env.LOG_SERVICE_URL || 'http://log-service:3000';
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
+
+// Helper assíncrono para despacho de eventos de auditoria ao log-service (Redis Streams)
+async function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
+  try {
+    fetch(`${LOG_SERVICE_URL}/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_id,
+        usuario_nome,
+        usuario_email,
+        acao,
+        detalhes,
+        ip,
+        timestamp: new Date().toISOString()
+      }),
+      timeout: 2500
+    }).catch(err => console.warn('[Audit Warning] Falha ao enviar log para log-service:', err.message));
+  } catch (err) {
+    console.warn('[Audit Warning]', err.message);
+  }
+}
 
 // Middleware de Autenticação (Quem é você?)
 const exigeLogin = (req, res, next) => {
@@ -102,6 +125,21 @@ const exigeAdmin = async (req, res, next) => {
     }
     const user = await response.json();
     if (user.role !== 'admin') {
+      // Registra a tentativa negada 403 no Redis Streams (auditoria de segurança valiosa)
+      registrarLogAuditoria({
+        usuario_id: user.id,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'ACESSO_NEGADO_403',
+        detalhes: {
+          rota_tentada: req.originalUrl,
+          metodo: req.method,
+          papel_usuario: user.role,
+          motivo: 'Tentativa de acesso a recurso restrito de administrador'
+        },
+        ip: req.ip
+      });
+
       // Enforcement no Backend: Retorna 403 Forbidden
       return res.status(403).json({ 
         error: 'Acesso negado (403 Forbidden): Esta ação é restrita a administradores.' 
@@ -186,6 +224,13 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
+  const userId = req.session.userId;
+  registrarLogAuditoria({
+    usuario_id: userId,
+    acao: 'LOGOUT',
+    detalhes: { motivo: 'Logout voluntário do usuário' },
+    ip: req.ip
+  });
   req.session = null;
   res.json({ success: true });
 });
@@ -230,6 +275,14 @@ app.post('/api/favorites', exigeLogin, async (req, res) => {
   try {
     await pool.query('INSERT INTO favoritos (usuario_id, tmdb_movie_id, titulo, poster_path) VALUES (?, ?, ?, ?)', 
       [req.session.userId, tmdb_movie_id, titulo, poster_path]);
+    
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      acao: 'FAVORITAR_FILME',
+      detalhes: { tmdb_movie_id, titulo },
+      ip: req.ip
+    });
+
     res.json({ success: true });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Filme já favoritado.' });
@@ -259,10 +312,18 @@ app.post('/api/comments', exigeLogin, async (req, res) => {
   const { tmdb_movie_id, texto } = req.body;
   if (!texto || !texto.trim()) return res.status(400).json({ error: 'Comentário vazio.' });
   try {
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO comentarios (usuario_id, tmdb_movie_id, texto) VALUES (?, ?, ?)',
       [req.session.userId, tmdb_movie_id, texto.trim()]
     );
+
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      acao: 'COMENTAR_FILME',
+      detalhes: { comentario_id: result.insertId, tmdb_movie_id, preview: texto.trim().substring(0, 60) },
+      ip: req.ip
+    });
+
     res.json({ success: true, message: 'Comentário registrado com sucesso.' });
   } catch (err) {
     console.error('Erro ao comentar:', err);
@@ -292,12 +353,41 @@ app.delete('/api/comments/:id', exigeLogin, async (req, res) => {
 
     // Validação de Autorização (Enforcement no Servidor)
     if (!isOwner && !isAdmin) {
+      // Registra tentativa negada no log de auditoria
+      registrarLogAuditoria({
+        usuario_id: req.session.userId,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'ACESSO_NEGADO_403',
+        detalhes: {
+          motivo: 'Tentativa de exclusão de comentário pertencente a outro usuário',
+          comentario_id: commentId,
+          autor_comentario_id: comment.usuario_id
+        },
+        ip: req.ip
+      });
+
       return res.status(403).json({
         error: 'Acesso negado (403 Forbidden): Apenas o autor do comentário ou um administrador podem excluir este comentário.'
       });
     }
 
     await pool.query('DELETE FROM comentarios WHERE id = ?', [commentId]);
+
+    // Registra log do evento (Distinção entre Exclusão Própria vs Moderação de Admin)
+    registrarLogAuditoria({
+      usuario_id: req.session.userId,
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: isAdmin && !isOwner ? 'MODERACAO_EXCLUIR_COMENTARIO' : 'EXCLUIR_COMENTARIO_PROPRIO',
+      detalhes: {
+        comentario_id: commentId,
+        autor_original_id: comment.usuario_id,
+        acao_por: isAdmin && !isOwner ? 'admin (moderação)' : 'autor'
+      },
+      ip: req.ip
+    });
+
     res.json({
       success: true,
       message: isAdmin && !isOwner
@@ -335,6 +425,24 @@ app.patch('/api/users/:id/role', exigeAdmin, async (req, res) => {
   }
 });
 
+// Consulta de Logs de Auditoria do Redis Streams (Exclusivo Admin)
+app.get('/api/logs', exigeAdmin, async (req, res) => {
+  const limit = req.query.limit || 100;
+  const acao = req.query.acao || '';
+  try {
+    const url = `${LOG_SERVICE_URL}/logs?limit=${limit}${acao ? `&acao=${encodeURIComponent(acao)}` : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Falha ao consultar logs de auditoria no log-service.' });
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Erro ao buscar logs de auditoria:', err);
+    res.status(500).json({ error: 'Erro de comunicação com o log-service: ' + err.message });
+  }
+});
+
 // Endpoint /health (Liveness & Readiness com Painel Visual & JSON)
 app.get('/health', async (req, res) => {
   const startTime = Date.now();
@@ -342,6 +450,9 @@ app.get('/health', async (req, res) => {
   let dbError = null;
   let authStatus = 'DOWN';
   let authError = null;
+
+  let logStatus = 'DOWN';
+  let logError = null;
 
   // 1. Testa conectividade com MariaDB / MySQL
   try {
@@ -361,6 +472,18 @@ app.get('/health', async (req, res) => {
     }
   } catch (err) {
     authError = err.message;
+  }
+
+  // 3. Testa comunicação interna com o Log Service (Redis)
+  try {
+    const logRes = await fetch(`${LOG_SERVICE_URL}/health?format=json`, { timeout: 3000 });
+    if (logRes.ok) {
+      logStatus = 'UP';
+    } else {
+      logError = `Log Service respondeu com status ${logRes.status}`;
+    }
+  } catch (err) {
+    logError = err.message;
   }
 
   const isHealthy = (dbStatus === 'UP' && authStatus === 'UP');
@@ -387,6 +510,11 @@ app.get('/health', async (req, res) => {
         status: authStatus,
         url: AUTH_SERVICE_URL,
         ...(authError && { error: authError })
+      },
+      logService: {
+        status: logStatus,
+        url: LOG_SERVICE_URL,
+        ...(logError && { error: logError })
       }
     }
   };
@@ -492,6 +620,19 @@ app.get('/health', async (req, res) => {
         </div>
         <span class="status-badge ${authStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
           ${authStatus}
+        </span>
+      </div>
+
+      <div class="service-card">
+        <div class="service-info">
+          <div class="service-icon" style="color: #dc2626;"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <h4 style="font-size: 14px; font-weight: 700;">Microsserviço de Logs & Auditoria (Redis Streams)</h4>
+            <p style="font-size: 12px; color: #64748b;">Comunicação interna: ${LOG_SERVICE_URL}</p>
+          </div>
+        </div>
+        <span class="status-badge ${logStatus === 'UP' ? 'healthy' : 'unhealthy'}" style="padding: 4px 12px; font-size: 11px;">
+          ${logStatus}
         </span>
       </div>
 

@@ -6,82 +6,82 @@
 ---
 
 ## 📑 Sumário das Implementações
-1. [Documentação Swagger / OpenAPI 3.0](#-1-documentação-swagger--openapi-30)
-2. [CI/CD com GitHub Actions](#-2-cicd-com-github-actions)
-3. [Observabilidade: Health Checks e Métricas Prometheus](#-3-observabilidade-health-checks-e-métricas)
-4. [Controle de Acesso por Papel (RBAC)](#-4-controle-de-acesso-por-papel-rbac)
-5. [Como Executar Localmente](#-5-como-executar-localmente)
+1. [Atividade 5: Logs e Auditoria com Redis Streams](#-1-atividade-5-logs-e-auditoria-com-redis-streams)
+2. [Atividade 4: Controle de Acesso por Papel (RBAC)](#-2-controle-de-acesso-por-papel-rbac)
+3. [Documentação Swagger / OpenAPI 3.0](#-3-documentação-swagger--openapi-30)
+4. [CI/CD com GitHub Actions](#-4-cicd-com-github-actions)
+5. [Observabilidade: Health Checks e Métricas Prometheus](#-5-observabilidade-health-checks-e-métricas)
+6. [Como Executar a Stack](#-6-como-executar-a-stack)
 
 ---
 
-## 📄 1. Documentação Swagger / OpenAPI 3.0
+## 📋 1. Atividade 5: Logs e Auditoria com Redis Streams
 
-Todos os endpoints dos serviços estão especificados e documentados sob o padrão **OpenAPI 3.0**, permitindo a visualização interativa e execução de chamadas reais com **"Try it out"** direto pelo navegador.
+Para garantir rastreabilidade completa das ações no sistema ("quem fez o quê, e quando"), foi construído um microsserviço dedicado de logs ([`log-service`](./log-service/)) desacoplado do banco relacional, utilizando **Redis Streams** como mecanismo de alta performance para armazenamento ordenado no tempo.
 
-### Links das Interfaces Swagger UI:
-- **Catálogo API (Catalog Service):** [`/apidocs`](https://amabili-flor-isw055.lapps.studio/apidocs) ou [`/docs`](https://amabili-flor-isw055.lapps.studio/docs)
-- **Arquivo da Especificação:** [`catalog-service/openapi.json`](./catalog-service/openapi.json)
-- **Auth Service API:** [`auth-service/openapi.json`](./auth-service/openapi.json) (acessível internamente em `/apidocs`)
-
-### O que está documentado em cada endpoint:
-- **Método HTTP e Rota** (ex: `POST /api/register`, `GET /api/movies`, `DELETE /api/comments/{id}`).
-- **Parâmetros e Corpo da Requisição** com schemas JSON e validações.
-- **Códigos de Resposta:** `200 OK`, `400 Bad Request`, `401 Unauthorized`, `403 Forbidden` (RBAC) e `500 Internal Server Error`.
-
----
-
-## 🤖 2. CI/CD com GitHub Actions
-
-O repositório possui um pipeline automatizado de Integração e Entrega Contínua em [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml), acionado a cada `push` ou `pull_request` na branch `main`.
-
-### Etapas do Pipeline:
-1. **CI (Continuous Integration):**
-   - Faz checkout do código e configura Node.js 18.x com cache de dependências.
-   - Executa a suíte de testes automatizados ([`auth-service/test.js`](./auth-service/test.js) e [`catalog-service/test.js`](./catalog-service/test.js)).
-   - Valida a integridade do contrato OpenAPI 3.0, módulos e regras de autorização RBAC.
-2. **CD (Continuous Delivery & Packaging):**
-   - Configura o Docker Buildx.
-   - Gera tags rastreáveis atreladas ao commit SHA (ex: `sha-abc1234`) além da tag `latest`.
-   - Constrói as imagens Docker de `auth-service` e `catalog-service`.
-   - Valida a integridade da stack no `docker compose build`.
-
-### Gestão Segura de Segredos:
-- Nenhuma credencial (senhas de banco de dados, API keys do TMDB, credenciais SMTP) fica gravada no código, YAMLs ou Dockerfiles.
-- As variáveis são injetadas estritamente em tempo de execução através do ambiente do **Portainer** ou **GitHub Secrets**.
-
----
-
-## 🩺 3. Observabilidade: Health Checks e Métricas
-
-### Health Checks (`/health` com Liveness & Readiness de Verdade)
-Ambos os microsserviços expõem o endpoint `/health` que realiza testes reais em suas dependências:
-- **`auth-service`:** Testa conectividade ativa executando query no banco MariaDB/MySQL.
-- **`catalog-service`:** Testa a conectividade com o banco MariaDB e a comunicação de rede interna com o `auth-service`.
-- **Status de Resposta:**
-  - `HTTP 200 OK`: Serviço saudável (`"status": "UP"`).
-  - `HTTP 503 Service Unavailable`: Falha em dependência crítica (`"status": "DOWN"`).
-
-### Monitoramento no Docker (`HEALTHCHECK`)
-Os contêineres possuem `healthcheck` configurado no [`docker-compose.yml`](./docker-compose.yml), permitindo que o Docker e o Portainer reportem o status do contêiner como `(healthy)` automaticamente via `docker ps`:
-```yaml
-healthcheck:
-  test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
-  interval: 15s
-  timeout: 5s
-  retries: 3
-  start_period: 10s
+```
+┌─────────────────┐       ┌─────────────────┐
+│ Catalog Service │       │  Auth Service   │
+└────────┬────────┘       └────────┬────────┘
+         │ (POST /logs)            │ (POST /logs)
+         └────────────┬────────────┘
+                      ▼
+             ┌─────────────────┐
+             │   Log Service   │
+             └────────┬────────┘
+                      │ XADD audit_logs *
+                      ▼
+             ┌─────────────────┐
+             │  Redis Stream   │ (audit_logs)
+             └─────────────────┘
 ```
 
-### Métricas Prometheus (`/metrics`)
-O endpoint `/metrics` expõe métricas em formato padrão consumível pelo **Prometheus**:
-- `http_requests_total{method, path, status}`: Contagem total de requisições por rota e código de status.
-- `http_request_duration_seconds`: Latência média das requisições.
-- `process_uptime_seconds`: Tempo de atividade do processo.
-- `process_resident_memory_bytes` / `process_heap_bytes`: Consumo de memória da aplicação.
+### 1.1 Por que Redis Streams?
+- **Alto volume e baixa latência**: Logs de auditoria têm alta taxa de escrita e leitura esporádica.
+- **Estrutura nativa de log**: O comando `XADD audit_logs * ...` gera IDs ordenados cronologicamente por milissegundo (`timestamp-sequence`), garantindo ordenação perfeita.
+- **Consultas eficientes**: O comando `XREVRANGE audit_logs + - COUNT N` permite que a administração consulte os últimos eventos instantaneamente sem sobrecarregar o banco de dados da aplicação.
+
+### 1.2 Eventos Capturados na Auditoria:
+| Evento (`acao`) | Origem | Descrição & Detalhes |
+| :--- | :--- | :--- |
+| `CADASTRO_USUARIO` | `auth-service` | Registro de nova conta com o papel inicial atribuído. |
+| `LOGIN_SUCESSO` | `auth-service` | Login autenticado com sucesso via hash bcrypt. |
+| `LOGIN_FALHA` | `auth-service` | Tentativa de login incorreta (senha errada ou e-mail inexistente). |
+| `SOLICITACAO_RECUPERACAO_SENHA` | `auth-service` | Disparo de e-mail com token de reset de senha. |
+| `REDEFINICAO_SENHA` | `auth-service` | Conclusão da alteração de senha via token válido. |
+| `ALTERACAO_PAPEL` | `auth-service` | Promoção ou rebaixamento de papel de usuário por um admin. |
+| `LOGOUT` | `catalog-service` | Encerramento voluntário de sessão pelo usuário. |
+| `FAVORITAR_FILME` | `catalog-service` | Filme adicionado à lista de favoritos (`tmdb_movie_id`, `titulo`). |
+| `COMENTAR_FILME` | `catalog-service` | Publicação de comentário comunitário em um filme. |
+| `EXCLUIR_COMENTARIO_PROPRIO` | `catalog-service` | Remoção de comentário feita pelo próprio autor. |
+| `MODERACAO_EXCLUIR_COMENTARIO`| `catalog-service` | **Ação de Moderação:** Administrador exclui comentário de outro usuário. |
+| `ACESSO_NEGADO_403` | `catalog-service` | **Auditoria de Segurança:** Tentativa de ação não autorizada (ex: usuário comum tentando excluir comentário de outro ou acessar rotas de admin). |
+
+### 1.3 Estrutura de Cada Log (Schema):
+```json
+{
+  "id": "1727710200000-0",
+  "usuario_id": 42,
+  "usuario_nome": "Maria Silva",
+  "usuario_email": "maria@teste.com",
+  "acao": "ACESSO_NEGADO_403",
+  "detalhes": {
+    "motivo": "Tentativa de exclusão de comentário pertencente a outro usuário",
+    "comentario_id": 10,
+    "autor_comentario_id": 2
+  },
+  "ip": "187.12.34.56",
+  "timestamp": "2026-09-30T15:30:00.000Z"
+}
+```
+
+### 1.4 Endpoint de Consulta e Visualização (Exclusivo Admin):
+- **Endpoint Backend:** `GET /api/logs?limit=100` (Protegido por `exigeAdmin`, retorna `403 Forbidden` para usuários comuns).
+- **Interface Web:** Aba dedicada **"📋 Auditoria de Logs"** no catálogo com filtros rápidos por categoria (Logins, Favoritos, Comentários, Moderações e Alertas 403).
 
 ---
 
-## 🔐 4. Controle de Acesso por Papel (RBAC)
+## 🔐 2. Controle de Acesso por Papel (RBAC)
 
 O sistema implementa o modelo **RBAC (Role-Based Access Control)** com enforcement centralizado no backend (Padrão A).
 
@@ -95,23 +95,57 @@ O sistema implementa o modelo **RBAC (Role-Based Access Control)** com enforceme
 | **Moderação de Comentários** | `DELETE /api/comments/:id` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Administrador pode moderar/excluir qualquer comentário. |
 | **Listar Todos os Usuários** | `GET /api/users` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Painel restrito a administradores. |
 | **Alterar Papel de Usuário** | `PATCH /api/users/:id/role` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Promover/rebaixar papéis no sistema. |
+| **Consultar Logs de Auditoria** | `GET /api/logs` | ❌ **403 Forbidden** | ✅ Permitido | **Ação Exclusiva:** Acesso restrito ao histórico de auditoria no Redis. |
 
 ---
 
-## 🚀 5. Como Executar Localmente
+## 📄 3. Documentação Swagger / OpenAPI 3.0
+
+Todos os endpoints dos serviços estão documentados sob o padrão **OpenAPI 3.0** com interface interativa Swagger UI:
+- **Catálogo API:** [`/apidocs`](https://amabili-flor-isw055.lapps.studio/apidocs) ou [`/docs`](https://amabili-flor-isw055.lapps.studio/docs)
+- **Especificações OpenAPI:**
+  - [`catalog-service/openapi.json`](./catalog-service/openapi.json)
+  - [`auth-service/openapi.json`](./auth-service/openapi.json)
+  - [`log-service/openapi.json`](./log-service/openapi.json)
+
+---
+
+## 🤖 4. CI/CD com GitHub Actions
+
+O repositório possui pipeline de Integração e Entrega Contínua em [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml):
+- **CI:** Executa testes automatizados ([`auth-service/test.js`](./auth-service/test.js), [`catalog-service/test.js`](./catalog-service/test.js) e [`log-service/test.js`](./log-service/test.js)).
+- **CD:** Constrói imagens Docker com tags rastreáveis atreladas ao commit SHA (ex: `sha-abc1234`) e valida a stack com `docker compose build`.
+
+---
+
+## 🩺 5. Observabilidade: Health Checks e Métricas
+
+- **Health Checks (`/health` com Liveness & Readiness):**
+  - `catalog-service`: Testa conectividade com MariaDB, `auth-service` e `log-service`.
+  - `auth-service`: Testa conectividade com MariaDB.
+  - `log-service`: Testa conectividade com o Redis.
+  - Suporta Dashboard visual no navegador e JSON para Docker.
+- **Docker `HEALTHCHECK`:** Configurado no [`docker-compose.yml`](./docker-compose.yml) para todos os serviços.
+- **Métricas Prometheus (`/metrics`):** Exposição em formato padrão OpenMetrics com dashboard interativo.
+
+---
+
+## 🚀 6. Como Executar a Stack
 
 ```bash
 # 1. Clonar o repositório
 git clone https://github.com/glaffamabili/catalogo-tom-hanks.git
 cd catalogo-tom-hanks
 
-# 2. Executar testes automatizados
-cd auth-service && npm test && cd ../catalog-service && npm test && cd ..
+# 2. Executar testes automatizados em todos os microsserviços
+npm test --prefix log-service && npm test --prefix auth-service && npm test --prefix catalog-service
 
-# 3. Subir os serviços com Docker Compose
+# 3. Subir todos os serviços com Docker Compose
 docker compose up -d --build
 ```
-- Aplicação Web: `http://localhost:8200`
-- Swagger UI: `http://localhost:8200/apidocs`
-- Health Check: `http://localhost:8200/health`
-- Métricas: `http://localhost:8200/metrics`
+
+### Portas e Endpoints:
+- **Aplicação Principal:** `http://localhost:8200`
+- **Swagger UI:** `http://localhost:8200/apidocs`
+- **Painel de Health Check:** `http://localhost:8200/health`
+- **Painel de Métricas Prometheus:** `http://localhost:8200/metrics`

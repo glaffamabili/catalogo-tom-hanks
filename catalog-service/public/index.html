@@ -1160,7 +1160,10 @@
             <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i> Comunidade (<span id="total-comms-badge">0</span>)
           </button>
           <button id="tab-btn-admin" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('admin', this)">
-            <i class="fa-solid fa-shield-halved"></i> Painel Admin (<span id="total-users-badge">0</span>)
+            <i class="fa-solid fa-shield-halved"></i> Usuários RBAC (<span id="total-users-badge">0</span>)
+          </button>
+          <button id="tab-btn-logs" class="app-tab-btn admin-tab hidden" onclick="mostrarSecao('logs', this)">
+            <i class="fa-solid fa-list-check" style="color: #ef4444;"></i> Auditoria de Logs (<span id="total-logs-badge">0</span>)
           </button>
         </div>
 
@@ -1223,6 +1226,44 @@
             </thead>
             <tbody id="users-table-body">
               <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando usuários...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 5: AUDITORIA DE LOGS COM REDIS STREAMS (EXCLUSIVO ADMIN) -->
+      <section id="tab-content-logs" class="hidden">
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <h2 class="section-title">
+            <i class="fa-solid fa-list-check" style="color: #ef4444;"></i> Logs de Auditoria & Segurança (Redis Streams)
+          </h2>
+          <button class="btn btn-primary" onclick="carregarLogsAuditoria()" style="padding: 8px 16px; font-size: 13px;">
+            <i class="fa-solid fa-rotate"></i> Atualizar Logs
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+          <button class="btn-role-toggle btn-promote" onclick="filtrarLogsAcao('')">Todos os Eventos</button>
+          <button class="btn-role-toggle btn-promote" onclick="filtrarLogsAcao('LOGIN')">Logins</button>
+          <button class="btn-role-toggle btn-promote" onclick="filtrarLogsAcao('FAVORITAR_FILME')">Favoritos</button>
+          <button class="btn-role-toggle btn-promote" onclick="filtrarLogsAcao('COMENTAR_FILME')">Comentários</button>
+          <button class="btn-role-toggle btn-demote" onclick="filtrarLogsAcao('MODERACAO_EXCLUIR_COMENTARIO')">Moderações</button>
+          <button class="btn-role-toggle btn-demote" onclick="filtrarLogsAcao('ACESSO_NEGADO_403')" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444;">🚨 403 Negados</button>
+        </div>
+
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Status / Ação</th>
+                <th>Usuário</th>
+                <th>Detalhes do Evento</th>
+                <th>IP Origem</th>
+                <th>Data & Hora</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <tr><td colspan="5" style="text-align: center; padding: 20px;">Carregando logs do Redis Streams...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1391,6 +1432,7 @@
       document.getElementById('tab-content-favoritos').classList.add('hidden');
       document.getElementById('tab-content-comentarios').classList.add('hidden');
       document.getElementById('tab-content-admin').classList.add('hidden');
+      document.getElementById('tab-content-logs').classList.add('hidden');
 
       const searchContainer = document.getElementById('search-container');
       if (secao === 'todos') {
@@ -1408,6 +1450,10 @@
         document.getElementById('tab-content-admin').classList.remove('hidden');
         searchContainer.classList.add('hidden');
         carregarUsuariosAdmin();
+      } else if (secao === 'logs') {
+        document.getElementById('tab-content-logs').classList.remove('hidden');
+        searchContainer.classList.add('hidden');
+        carregarLogsAuditoria();
       }
     }
 
@@ -1432,13 +1478,17 @@
         roleBadge.innerText = (usuarioAtual.role || 'usuario').toUpperCase();
         roleBadge.className = `role-tag ${usuarioAtual.role || 'usuario'}`;
 
-        // Se for admin, exibe a aba de administração
+        // Se for admin, exibe as abas de administração e auditoria de logs
         const adminTab = document.getElementById('tab-btn-admin');
+        const logsTab = document.getElementById('tab-btn-logs');
         if (usuarioAtual.role === 'admin') {
           adminTab.classList.remove('hidden');
+          logsTab.classList.remove('hidden');
           carregarContadorUsuarios();
+          carregarContadorLogs();
         } else {
           adminTab.classList.add('hidden');
+          logsTab.classList.add('hidden');
         }
 
         // Carregar Favoritos primeiro para sincronizar os botões
@@ -1834,6 +1884,104 @@
         }
       } catch (err) {
         showToast('Erro de comunicação ao alterar papel.', 'error');
+      }
+    }
+
+    // Carregar Contador de Logs no Painel Admin
+    async function carregarContadorLogs() {
+      try {
+        const res = await fetch('/api/logs?limit=1');
+        if (res.ok) {
+          const logs = await res.json();
+          document.getElementById('total-logs-badge').innerText = logs.length > 0 ? 'Ativo' : '0';
+        }
+      } catch (err) {}
+    }
+
+    let filtroAcaoAtual = '';
+    function filtrarLogsAcao(acao) {
+      filtroAcaoAtual = acao;
+      carregarLogsAuditoria();
+    }
+
+    // Carregar Logs de Auditoria do Redis Streams
+    async function carregarLogsAuditoria() {
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><div class="spinner"></div></td></tr>';
+
+      try {
+        const url = `/api/logs?limit=100${filtroAcaoAtual ? `&acao=${encodeURIComponent(filtroAcaoAtual)}` : ''}`;
+        const res = await fetch(url);
+
+        if (!res.ok) {
+          const err = await res.json();
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">${err.error || 'Acesso negado aos logs de auditoria.'}</td></tr>`;
+          return;
+        }
+
+        const logs = await res.json();
+        document.getElementById('total-logs-badge').innerText = logs.length;
+
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Nenhum log encontrado para o filtro selecionado no Redis Streams.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = logs.map(l => {
+          let badgeClass = 'usuario';
+          let icon = 'fa-circle-info';
+          let color = '#38bdf8';
+
+          if (l.acao.includes('LOGIN_SUCESSO') || l.acao.includes('CADASTRO')) {
+            badgeClass = 'admin';
+            icon = 'fa-arrow-right-to-bracket';
+            color = '#10b981';
+          } else if (l.acao.includes('ACESSO_NEGADO') || l.acao.includes('FALHA')) {
+            icon = 'fa-shield-halved';
+            color = '#ef4444';
+          } else if (l.acao.includes('MODERACAO')) {
+            icon = 'fa-gavel';
+            color = '#f59e0b';
+          } else if (l.acao.includes('FAVORITAR')) {
+            icon = 'fa-heart';
+            color = '#e50914';
+          } else if (l.acao.includes('COMENTAR')) {
+            icon = 'fa-comment';
+            color = '#60a5fa';
+          }
+
+          let detalhesStr = '';
+          if (l.detalhes) {
+            if (typeof l.detalhes === 'object') {
+              detalhesStr = Object.entries(l.detalhes).map(([k, v]) => `<strong>${k}:</strong> ${v}`).join(' • ');
+            } else {
+              detalhesStr = l.detalhes;
+            }
+          }
+
+          const dataHora = l.timestamp ? new Date(l.timestamp).toLocaleString('pt-BR') : 'N/A';
+
+          return `
+            <tr>
+              <td>
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 11px; background: rgba(255,255,255,0.05); color: ${color}; border: 1px solid ${color}40;">
+                  <i class="fa-solid ${icon}"></i> ${l.acao}
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 700;">${l.usuario_nome || 'Anônimo'}</div>
+                <div style="font-size: 11px; color: var(--text-dim);">${l.usuario_email || (l.usuario_id ? `ID #${l.usuario_id}` : '')}</div>
+              </td>
+              <td style="font-size: 12px; color: #cbd5e1; max-width: 300px; word-break: break-word;">
+                ${detalhesStr || '<span style="color: #64748b;">Sem detalhes extras</span>'}
+              </td>
+              <td style="font-family: monospace; font-size: 11px; color: #94a3b8;">${l.ip || '127.0.0.1'}</td>
+              <td style="font-size: 12px; color: #94a3b8; white-space: nowrap;">${dataHora}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #f87171; padding: 20px;">Erro ao carregar logs do Redis Streams.</td></tr>';
       }
     }
 

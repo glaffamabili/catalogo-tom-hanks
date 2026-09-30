@@ -5,6 +5,39 @@ networks:
     driver: bridge
 
 services:
+  # Servidor Redis para persistência de logs em Redis Streams (XADD)
+  redis:
+    image: redis:7-alpine
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Microsserviço de Logs e Auditoria (Atividade 5)
+  log-service:
+    build:
+      context: ./log-service
+      dockerfile: Dockerfile
+    networks:
+      - app-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health?format=json', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Microsserviço de Autenticação (Atividade 3 / 4)
   auth-service:
     build:
       context: ./auth-service
@@ -21,13 +54,15 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - APP_URL=${APP_URL}
+      - LOG_SERVICE_URL=http://log-service:3000
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health?format=json', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 10s
 
+  # Microsserviço Catálogo e Frontend (Atividade 2 / 4 / 5)
   catalog-service:
     build:
       context: ./catalog-service
@@ -43,9 +78,10 @@ services:
       - DB_NAME=IAC_2026_02_amabili_flor
       - TMDB_API_KEY=${TMDB_API_KEY}
       - AUTH_SERVICE_URL=http://auth-service:3000
+      - LOG_SERVICE_URL=http://log-service:3000
       - APP_URL=${APP_URL}
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health?format=json', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
       interval: 15s
       timeout: 5s
       retries: 3

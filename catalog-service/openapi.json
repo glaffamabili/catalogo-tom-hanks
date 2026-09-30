@@ -282,6 +282,32 @@
         }
       }
     },
+    "/api/logs": {
+      "get": {
+        "tags": ["Administração de Usuários"],
+        "summary": "Consultar Logs de Auditoria do Redis Streams (Exclusivo Admin)",
+        "description": "Retorna os eventos de auditoria e segurança persistidos no Redis Stream (login, logout, moderação, tentativas 403, etc.). Retorna 403 Forbidden para usuários comuns.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 100 }
+          },
+          {
+            "name": "acao",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista de logs de auditoria retornada com sucesso" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Acesso negado (403 Forbidden): Requer privilégios de administrador" }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": ["Observabilidade"],

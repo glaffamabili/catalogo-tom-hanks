@@ -24,6 +24,17 @@ jobs:
           cache-dependency-path: |
             auth-service/package.json
             catalog-service/package.json
+            log-service/package.json
+
+      - name: 📦 Instalar Dependências — Log Service
+        run: |
+          cd log-service
+          npm install
+
+      - name: 🧪 Executar Testes Automatizados — Log Service
+        run: |
+          cd log-service
+          npm test
 
       - name: 📦 Instalar Dependências — Auth Service
         run: |
@@ -65,6 +76,16 @@ jobs:
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "commit_tag=sha-$SHORT_SHA" >> $GITHUB_OUTPUT
 
+      - name: 🔨 Build da Imagem — Log Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./log-service
+          file: ./log-service/Dockerfile
+          push: false
+          tags: |
+            log-service:${{ steps.meta.outputs.commit_tag }}
+            log-service:latest
+
       - name: 🔨 Build da Imagem — Auth Service
         uses: docker/build-push-action@v5
         with:
@@ -89,4 +110,3 @@ jobs:
         run: |
           docker compose config
           docker compose build
-

@@ -28,6 +28,31 @@ app.use((req, res, next) => {
   next();
 });
 
+const LOG_SERVICE_URL = process.env.LOG_SERVICE_URL || 'http://log-service:3000';
+
+// Helper assíncrono para envio de eventos de auditoria ao log-service (Redis Streams)
+async function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
+  try {
+    if (typeof fetch === 'function') {
+      fetch(`${LOG_SERVICE_URL}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id,
+          usuario_nome,
+          usuario_email,
+          acao,
+          detalhes,
+          ip,
+          timestamp: new Date().toISOString()
+        })
+      }).catch(err => console.warn('[Audit Warning] Falha no log-service:', err.message));
+    }
+  } catch (err) {
+    console.warn('[Audit Warning]', err.message);
+  }
+}
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -142,6 +167,16 @@ app.post('/register', async (req, res) => {
       }
     }
 
+    // Registra log de auditoria
+    registrarLogAuditoria({
+      usuario_id: result.insertId,
+      usuario_nome: nome,
+      usuario_email: email,
+      acao: 'CADASTRO_USUARIO',
+      detalhes: { role: userRole },
+      ip: req.ip
+    });
+
     res.json({ success: true, userId: result.insertId, role: userRole });
   } catch (err) {
     console.error('Erro no cadastro:', err);
@@ -155,11 +190,39 @@ app.post('/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-    if (rows.length === 0) return res.status(401).json({ error: 'Credenciais inválidas.' });
+    if (rows.length === 0) {
+      registrarLogAuditoria({
+        usuario_email: email,
+        acao: 'LOGIN_FALHA',
+        detalhes: { motivo: 'E-mail não cadastrado' },
+        ip: req.ip
+      });
+      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    }
 
     const user = rows[0];
     const match = await bcrypt.compare(senha, user.senha_hash);
-    if (!match) return res.status(401).json({ error: 'Credenciais inválidas.' });
+    if (!match) {
+      registrarLogAuditoria({
+        usuario_id: user.id,
+        usuario_nome: user.nome,
+        usuario_email: email,
+        acao: 'LOGIN_FALHA',
+        detalhes: { motivo: 'Senha incorreta' },
+        ip: req.ip
+      });
+      return res.status(401).json({ error: 'Credenciais inválidas.' });
+    }
+
+    // Registra log de auditoria de login com sucesso
+    registrarLogAuditoria({
+      usuario_id: user.id,
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: 'LOGIN_SUCESSO',
+      detalhes: { role: user.role || 'usuario' },
+      ip: req.ip
+    });
 
     res.json({ success: true, userId: user.id, nome: user.nome, role: user.role || 'usuario' });
   } catch (err) {
@@ -220,6 +283,14 @@ app.post('/forgot-password', async (req, res) => {
       `
     });
 
+    registrarLogAuditoria({
+      usuario_id: userId,
+      usuario_email: email,
+      acao: 'SOLICITACAO_RECUPERACAO_SENHA',
+      detalhes: { expira_em: expiraEm },
+      ip: req.ip
+    });
+
     res.json({ success: true, message: 'E-mail de recuperação enviado com sucesso!' });
   } catch (err) {
     console.error('Erro ao gerar recuperação de senha:', err);
@@ -251,6 +322,13 @@ app.post('/reset-password', async (req, res) => {
     
     await pool.query('UPDATE usuarios SET senha_hash = ? WHERE id = ?', [hash, resetRecord.usuario_id]);
     await pool.query('UPDATE reset_tokens SET usado = 1 WHERE id = ?', [resetRecord.id]);
+
+    registrarLogAuditoria({
+      usuario_id: resetRecord.usuario_id,
+      acao: 'REDEFINICAO_SENHA',
+      detalhes: { motivo: 'Senha redefinida com sucesso via token de e-mail' },
+      ip: req.ip
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -291,6 +369,14 @@ app.patch('/users/:id/role', async (req, res) => {
   try {
     const [result] = await pool.query('UPDATE usuarios SET role = ? WHERE id = ?', [role, req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+    registrarLogAuditoria({
+      usuario_id: req.params.id,
+      acao: 'ALTERACAO_PAPEL',
+      detalhes: { novo_papel: role, alterado_por: 'admin' },
+      ip: req.ip
+    });
+
     res.json({ success: true, message: `Papel do usuário atualizado para "${role}".` });
   } catch (err) {
     console.error('Erro ao atualizar papel:', err);
