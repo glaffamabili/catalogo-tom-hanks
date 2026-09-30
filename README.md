@@ -1,19 +1,28 @@
 # 🎬 Catálogo de Filmes & Rede Social — Tom Hanks
 > **ISW055 · Introdução à Computação em Nuvem**  
+> Aluna: **Amabili Flor** · Turma: **161_SIST. INTELIGENTES_N**  
 > Professor: [@siriani](https://github.com/siriani) — [github.com/siriani](https://github.com/siriani)  
 > Aplicação em Produção: [https://amabili-flor-isw055.lapps.studio/](https://amabili-flor-isw055.lapps.studio/)
 
 ---
 
+## 📑 P1 — Relatório Bimestral de Atividades (Avaliação Individual)
+📄 **Documento Oficial de Entrega da P1:**
+- **Relatório em PDF:** [`docs/P1_ISW055_Amabili_Flor.pdf`](./docs/P1_ISW055_Amabili_Flor.pdf)
+- **Código-Fonte em Typst:** [`docs/P1_ISW055_Amabili_Flor.typ`](./docs/P1_ISW055_Amabili_Flor.typ)
+
+---
+
 ## 📑 Sumário das Implementações
-1. [Perfil de Usuário Social & Object Storage MinIO (Atividade 6)](#-1-perfil-social--object-storage-minio-atividade-6)
-2. [Segurança Avançada: 2FA, E-mails Reais e Privacidade de Dados](#-2-seguran%C3%A7a-avan%C3%A7ada-2fa-e-mails-reais-e-privacidade)
-3. [Logs e Auditoria com Redis Streams (Atividade 5)](#-3-logs-e-auditoria-com-redis-streams-atividade-5)
-4. [Controle de Acesso por Papel (RBAC de Verdade - Atividade 4)](#-4-controle-de-acesso-por-papel-rbac)
-5. [Documentação Swagger / OpenAPI 3.0](#-5-documenta%C3%A7%C3%A3o-swagger--openapi-30)
-6. [CI/CD com GitHub Actions](#-6-cicd-com-github-actions)
-7. [Observabilidade: Health Checks e Métricas Prometheus](#-7-observabilidade-health-checks-e-m%C3%A9tricas)
-8. [Como Executar Localmente](#-8-como-executar-localmente)
+1. [P1 — Relatório Bimestral de Atividades](#-p1--relat%C3%B3rio-bimestral-de-atividades-avalia%C3%A7%C3%A3o-individual)
+2. [Perfil de Usuário Social & Object Storage MinIO (Atividade 6)](#-1-perfil-social--object-storage-minio-atividade-6)
+3. [Segurança Avançada: 2FA, E-mails Reais e Privacidade de Dados](#-2-seguran%C3%A7a-avan%C3%A7ada-2fa-e-mails-reais-e-privacidade)
+4. [Logs e Auditoria com Redis Streams (Atividade 5)](#-3-logs-e-auditoria-com-redis-streams-atividade-5)
+5. [Controle de Acesso por Papel (RBAC de Verdade - Atividade 4)](#-4-controle-de-acesso-por-papel-rbac)
+6. [Documentação Swagger / OpenAPI 3.0](#-5-documenta%C3%A7%C3%A3o-swagger--openapi-30)
+7. [CI/CD com GitHub Actions](#-6-cicd-com-github-actions)
+8. [Observabilidade: Health Checks e Métricas Prometheus](#-7-observabilidade-health-checks-e-m%C3%A9tricas)
+9. [Como Executar Localmente](#-8-como-executar-localmente)
 
 ---
 
