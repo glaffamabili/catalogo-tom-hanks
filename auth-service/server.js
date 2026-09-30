@@ -4,32 +4,6 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
-const http = require('http');
-
-const LOG_SERVICE_HOST = process.env.LOG_SERVICE_HOST || 'log-service';
-const LOG_SERVICE_PORT = parseInt(process.env.LOG_SERVICE_PORT) || 3000;
-
-function registrarLogAuditoria({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip }) {
-  try {
-    const data = JSON.stringify({ usuario_id, usuario_nome, usuario_email, acao, detalhes, ip });
-    const req = http.request({
-      hostname: LOG_SERVICE_HOST,
-      port: LOG_SERVICE_PORT,
-      path: '/logs',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data)
-      },
-      timeout: 3000
-    }, (res) => {
-      res.resume();
-    });
-    req.on('error', () => {});
-    req.write(data);
-    req.end();
-  } catch (err) {}
-}
 
 const app = express();
 app.use(express.json());
@@ -168,15 +142,6 @@ app.post('/register', async (req, res) => {
       }
     }
 
-    registrarLogAuditoria({
-      usuario_id: result.insertId,
-      usuario_nome: nome,
-      usuario_email: email,
-      acao: 'CADASTRO_USUARIO',
-      detalhes: { role: userRole },
-      ip: req.ip
-    });
-
     res.json({ success: true, userId: result.insertId, role: userRole });
   } catch (err) {
     console.error('Erro no cadastro:', err);
@@ -196,15 +161,6 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(senha, user.senha_hash);
     if (!match) return res.status(401).json({ error: 'Credenciais inválidas.' });
 
-    registrarLogAuditoria({
-      usuario_id: user.id,
-      usuario_nome: user.nome,
-      usuario_email: user.email,
-      acao: 'LOGIN_SUCESSO',
-      detalhes: { role: user.role || 'usuario' },
-      ip: req.ip
-    });
-
     res.json({ success: true, userId: user.id, nome: user.nome, role: user.role || 'usuario' });
   } catch (err) {
     console.error('Erro no login:', err);
@@ -218,7 +174,7 @@ app.post('/forgot-password', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'E-mail não informado.' });
 
   try {
-    const [rows] = await pool.query('SELECT id, nome FROM usuarios WHERE email = ?', [email]);
+    const [rows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     if (rows.length === 0) return res.status(404).json({ error: 'E-mail não encontrado.' });
 
     const userId = rows[0].id;
@@ -230,13 +186,6 @@ app.post('/forgot-password', async (req, res) => {
       'INSERT INTO reset_tokens (token, usuario_id, criado_em, expira_em, usado) VALUES (?, ?, ?, ?, 0)',
       [token, userId, agora, expiraEm]
     );
-
-    registrarLogAuditoria({
-      usuario_id: userId,
-      usuario_email: email,
-      acao: 'SOLICITACAO_RECUPERACAO_SENHA',
-      ip: req.ip
-    });
 
     const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:8200';
     const resetLink = `${baseUrl}/reset-password.html?token=${token}`;
@@ -303,12 +252,6 @@ app.post('/reset-password', async (req, res) => {
     await pool.query('UPDATE usuarios SET senha_hash = ? WHERE id = ?', [hash, resetRecord.usuario_id]);
     await pool.query('UPDATE reset_tokens SET usado = 1 WHERE id = ?', [resetRecord.id]);
 
-    registrarLogAuditoria({
-      usuario_id: resetRecord.usuario_id,
-      acao: 'REDEFINICAO_SENHA_SUCESSO',
-      ip: req.ip
-    });
-
     res.json({ success: true });
   } catch (err) {
     console.error('Erro ao redefinir senha:', err);
@@ -348,14 +291,6 @@ app.patch('/users/:id/role', async (req, res) => {
   try {
     const [result] = await pool.query('UPDATE usuarios SET role = ? WHERE id = ?', [role, req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
-
-    registrarLogAuditoria({
-      usuario_id: req.params.id,
-      acao: 'ALTERACAO_PAPEL_RBAC',
-      detalhes: { novo_papel: role },
-      ip: req.ip
-    });
-
     res.json({ success: true, message: `Papel do usuário atualizado para "${role}".` });
   } catch (err) {
     console.error('Erro ao atualizar papel:', err);

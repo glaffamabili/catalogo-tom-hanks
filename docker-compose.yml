@@ -19,7 +19,7 @@ services:
 
   # Object Storage MinIO para fotos de perfil dos usuários (Atividade 6)
   minio:
-    image: minio/minio:RELEASE.2023-09-04T19-57-37Z
+    image: quay.io/minio/minio:latest
     command: server /data --console-address ":9001"
     networks:
       - app-network
@@ -27,11 +27,11 @@ services:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 15s
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 5s
 
   # Microsserviço de Logs e Auditoria (Atividade 5)
   log-service:
@@ -70,7 +70,8 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - APP_URL=${APP_URL}
-      - LOG_SERVICE_URL=http://log-service:3000
+      - LOG_SERVICE_HOST=log-service
+      - LOG_SERVICE_PORT=3000
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health?format=json', (r) => { if (r.statusCode !== 200) process.exit(1); })"]
       interval: 15s
