@@ -180,7 +180,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Construção da primeira versão do catálogo cinematográfico em Node.js e Express, integrando-se à API RESTful do The Movie Database (TMDB) para carregar dinamicamente a filmografia completa do ator Tom Hanks. Foi implementado o banco relacional MariaDB para persistência de favoritos segregados por usuário e listagem em grade responsiva com pôsteres e avaliações.
 
   #evidencia([Atividade 2 — Evidência do commit b61415d no GitHub com data/hora e repositório], arquivo: "prints/atividade-2-entrega.svg")
-  #evidencia([Atividade 2 — Resultado real do sistema (Catálogo com filmografia e vitrine de favoritos no MariaDB)], arquivo: "prints/atividade-2-resultado.png")
+  #evidencia([Atividade 2 — Resultado real do catálogo dinâmico (187 filmes TMDB, busca e notas)], arquivo: "prints/atividade-2-catalogo.png")
+  #evidencia([Atividade 2 — Vitrine de filmes favoritados persistidos no banco MariaDB], arquivo: "prints/atividade-2-resultado.png")
 
   *Dificuldades e resolução.* A proteção da chave privada de API do TMDB foi o ponto crítico, resolvida pela segregação da chave em variáveis de ambiente (`.env` e Docker Compose), evitando vazamento de credenciais no código-fonte.
 ]
@@ -230,7 +231,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Criação de um microsserviço dedicado de observabilidade e auditoria (`log-service`) integrado ao Redis. Utilizando a estrutura de dados de alta performance *Redis Streams* com o comando `XADD`, o sistema passou a registrar de forma imutável todos os eventos críticos (login, 2FA, cadastro, postagem/exclusão de comentários, moderação, uploads e tentativas de acesso negadas 403), disponibilizando a consulta via comando `XRANGE` exclusivamente para administradores.
 
-  #evidencia([Atividade 5 — Evidência do commit bc388a8 no GitHub com log-service e Redis Streams], arquivo: "prints/atividade-5-entrega.svg")
+  #evidencia([Atividade 5 — Evidência real no GitHub da criação do microsserviço log-service (Commit bc388a8)], arquivo: "prints/atividade-5-entrega.png")
   #evidencia([Atividade 5 — Resultado do sistema (Trilha de auditoria em Redis Streams com XADD/XRANGE)], arquivo: "prints/atividade-5-resultado.svg")
 
   *Dificuldades e resolução.* Definir a serialização correta de payloads complexos no formato chave-valor do Redis Streams sem sobrecarregar o tempo de resposta das rotas principais da aplicação.
@@ -268,7 +269,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Especificação completa da API sob o padrão OpenAPI 3.0 em `openapi.json`, disponibilizando a interface interativa Swagger UI acessível publicamente em `/apidocs` com documentação detalhada de rotas, parâmetros, schemas JSON de requisição e códigos de retorno HTTP.
 
-  #evidencia([Atividade E1 — Interface Swagger UI interativa documentando todos os endpoints RESTful], arquivo: "prints/atividade-e1-resultado.svg")
+  #evidencia([Atividade E1 — Interface Swagger UI interativa documentando todos os endpoints RESTful], arquivo: "prints/atividade-e1-resultado.png")
 ]
 
 #atividade(
