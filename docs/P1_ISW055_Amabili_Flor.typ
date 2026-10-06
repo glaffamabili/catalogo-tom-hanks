@@ -162,8 +162,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Desenvolvimento de uma aplicação web monolítica em Python utilizando o framework Flask e o mecanismo de templates Jinja2. O sistema implementou operações de cadastro, edição e listagem de contatos telefônicos com persistência em arquivo JSON, servindo para nivelamento dos conceitos de requisições HTTP (GET/POST), rotas e renderização server-side.
 
-  #evidencia([Atividade 1 — Evidência de execução em sala de aula (Terminal e comandos)], arquivo: "prints/atividade-1-entrega.svg")
-  #evidencia([Atividade 1 — Resultado do sistema (Agenda telefônica em Flask e Jinja2)], arquivo: "prints/atividade-1-resultado.svg")
+  #evidencia([Atividade 1 — Evidência de execução em sala de aula (Terminal e comandos)], arquivo: "prints/atividade-1-entrega.png")
+  #evidencia([Atividade 1 — Resultado do sistema (Agenda telefônica em Flask e Jinja2)], arquivo: "prints/atividade-1-resultado.png")
 
   *Dificuldades e resolução.* A principal dificuldade inicial foi a manipulação concorrente em arquivos locais de texto para persistência de dados, solucionada com rotinas estruturadas de serialização e desserialização de JSON.
 ]
@@ -198,7 +198,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Desacoplamento da arquitetura monolítica com a criação do microsserviço independente `auth-service`. A autenticação passou a utilizar criptografia forte com hash bcrypt (`salt=10`), fluxo seguro de recuperação de senha com tokens de expiração de 30 minutos e envio automático de e-mails transacionais com Nodemailer e Mailtrap, interligados na rede interna bridge do Docker.
 
   #evidencia([Atividade 3 — Evidência real no GitHub do microsserviço auth-service desacoplado], arquivo: "prints/atividade-3-entrega.png")
-  #evidencia([Atividade 3 — Arquitetura de autenticação, endpoints e recuperação de senha], arquivo: "prints/atividade-3-resultado.svg")
+  #evidencia([Atividade 3 — Arquitetura de autenticação, endpoints e recuperação de senha], arquivo: "prints/atividade-3-resultado.png")
 
   *Dificuldades e resolução.* Configuração da comunicação interna HTTP entre os contêineres e garantia de integridade da sessão do usuário sem expor as rotas internas de autenticação para a internet pública.
 ]
@@ -214,7 +214,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Implementação do modelo de controle de acesso baseado em papel (RBAC) com validação estrita no servidor (Padrão A Centralizado). O sistema estabeleceu os papéis `usuario` e `admin`, restringindo a moderação de comentários de terceiros, a consulta à lista de usuários e a alteração de privilégios com o retorno estrito de `HTTP 403 Forbidden` no backend para usuários não autorizados.
 
-  #evidencia([Atividade 4 — Evidência do commit 21f3b2b no GitHub com regras RBAC], arquivo: "prints/atividade-4-entrega.svg")
+  #evidencia([Atividade 4 — Evidência do commit 21f3b2b no GitHub com regras RBAC], arquivo: "prints/atividade-4-entrega.png")
   #evidencia([Atividade 4 — Resultado real do sistema (Formulário de cadastro com seleção de papéis RBAC no servidor)], arquivo: "prints/atividade-4-resultado.png")
 
   *Dificuldades e resolução.* Eliminar qualquer dependência de validações client-side no frontend, garantindo que o backend fizesse a checagem em tempo real junto ao `auth-service` para cada ação protegida.
@@ -232,7 +232,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
   *O que foi feito.* Criação de um microsserviço dedicado de observabilidade e auditoria (`log-service`) integrado ao Redis. Utilizando a estrutura de dados de alta performance *Redis Streams* com o comando `XADD`, o sistema passou a registrar de forma imutável todos os eventos críticos (login, 2FA, cadastro, postagem/exclusão de comentários, moderação, uploads e tentativas de acesso negadas 403), disponibilizando a consulta via comando `XRANGE` exclusivamente para administradores.
 
   #evidencia([Atividade 5 — Evidência real no GitHub da criação do microsserviço log-service (Commit bc388a8)], arquivo: "prints/atividade-5-entrega.png")
-  #evidencia([Atividade 5 — Resultado do sistema (Trilha de auditoria em Redis Streams com XADD/XRANGE)], arquivo: "prints/atividade-5-resultado.svg")
+  #evidencia([Atividade 5 — Trilha de auditoria em Redis Streams com XADD/XRANGE], arquivo: "prints/atividade-5-resultado.png")
 
   *Dificuldades e resolução.* Definir a serialização correta de payloads complexos no formato chave-valor do Redis Streams sem sobrecarregar o tempo de resposta das rotas principais da aplicação.
 ]
@@ -248,7 +248,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Transformação do catálogo em uma rede social cinematográfica completa. Implementação de upload de imagens de avatar direcionadas ao *MinIO Object Storage* (`cgr.dev/chainguard/minio:latest`), gravando apenas a chave de referência no MariaDB e servindo as imagens por streaming reverso com cache HTTP (`Cache-Control: 86400`). A página de perfil passou a exibir nome, e-mail real do usuário, biografia editável, estatísticas de engajamento e vitrine de favoritos. Adicionalmente, implementou-se autenticação em duas etapas (2FA via e-mail OTP) e validação de e-mails reais com checagem DNS MX.
 
-  #evidencia([Atividade 6 — Evidência do commit 98b334a no GitHub com MinIO Object Storage e 2FA], arquivo: "prints/atividade-6-entrega.svg")
+  #evidencia([Atividade 6 — Evidência do commit 98b334a no GitHub com MinIO Object Storage e 2FA], arquivo: "prints/atividade-6-entrega.png")
   #evidencia([Atividade 6 — Resultado real do sistema (Perfil social com foto no MinIO Object Storage, bio, e-mail real e favoritos)], arquivo: "prints/atividade-6-resultado.png")
 
   *Dificuldades e resolução.* Substituição da imagem MinIO do Docker Hub por uma imagem pública aberta e segura da Chainguard para contornar restrições de pull no Portainer, além de implementar entrega reversa das fotos mantendo o MinIO isolado na rede interna Docker.
@@ -283,7 +283,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Configuração de pipeline automatizado em `.github/workflows/ci-cd.yml` acionado a cada push ou pull request na branch `main`. O pipeline executa a suíte de testes de validação lógica e de contrato OpenAPI, além de construir e validar as imagens Docker dos microsserviços.
 
-  #evidencia([Atividade E2 — Pipeline de CI/CD automatizado no GitHub Actions com testes e build], arquivo: "prints/atividade-e2-resultado.svg")
+  #evidencia([Atividade E2 — Pipeline de CI/CD automatizado no GitHub Actions com testes e build], arquivo: "prints/atividade-e2-resultado.png")
 ]
 
 #atividade(
