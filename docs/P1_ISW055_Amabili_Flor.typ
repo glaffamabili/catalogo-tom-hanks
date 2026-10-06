@@ -162,8 +162,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Desenvolvimento de uma aplicação web monolítica em Python utilizando o framework Flask e o mecanismo de templates Jinja2. O sistema implementou operações de cadastro, edição e listagem de contatos telefônicos com persistência em arquivo JSON, servindo para nivelamento dos conceitos de requisições HTTP (GET/POST), rotas e renderização server-side.
 
-  #evidencia([Atividade 1 — Evidência de execução em sala de aula (Terminal e comandos)], arquivo: "prints/atividade-1-entrega.png")
-  #evidencia([Atividade 1 — Resultado do sistema (Agenda telefônica em Flask e Jinja2)], arquivo: "prints/atividade-1-resultado.png")
+  #evidencia([Atividade 1 — Evidência de execução em sala de aula (Terminal e comandos)], arquivo: "prints/atividade-1-entrega.svg")
+  #evidencia([Atividade 1 — Resultado do sistema (Agenda telefônica em Flask e Jinja2)], arquivo: "prints/atividade-1-resultado.svg")
 
   *Dificuldades e resolução.* A principal dificuldade inicial foi a manipulação concorrente em arquivos locais de texto para persistência de dados, solucionada com rotinas estruturadas de serialização e desserialização de JSON.
 ]
@@ -179,9 +179,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Construção da primeira versão do catálogo cinematográfico em Node.js e Express, integrando-se à API RESTful do The Movie Database (TMDB) para carregar dinamicamente a filmografia completa do ator Tom Hanks. Foi implementado o banco relacional MariaDB para persistência de favoritos segregados por usuário e listagem em grade responsiva com pôsteres e avaliações.
 
-  #evidencia([Atividade 2 — Evidência real no GitHub da estrutura do serviço catalog-service], arquivo: "prints/atividade-2-entrega.png")
-  #evidencia([Atividade 2 — Resultado real do catálogo dinâmico (187 filmes TMDB, barra de busca e avaliações)], arquivo: "prints/atividade-2-catalogo.png")
-  #evidencia([Atividade 2 — Vitrine de filmes favoritados persistidos no banco MariaDB], arquivo: "prints/atividade-2-resultado.png")
+  #evidencia([Atividade 2 — Evidência do commit b61415d no GitHub com data/hora e repositório], arquivo: "prints/atividade-2-entrega.svg")
+  #evidencia([Atividade 2 — Resultado do sistema (Catálogo de filmes e favoritos no MariaDB)], arquivo: "prints/atividade-2-resultado.svg")
 
   *Dificuldades e resolução.* A proteção da chave privada de API do TMDB foi o ponto crítico, resolvida pela segregação da chave em variáveis de ambiente (`.env` e Docker Compose), evitando vazamento de credenciais no código-fonte.
 ]
@@ -197,8 +196,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Desacoplamento da arquitetura monolítica com a criação do microsserviço independente `auth-service`. A autenticação passou a utilizar criptografia forte com hash bcrypt (`salt=10`), fluxo seguro de recuperação de senha com tokens de expiração de 30 minutos e envio automático de e-mails transacionais com Nodemailer e Mailtrap, interligados na rede interna bridge do Docker.
 
-  #evidencia([Atividade 3 — Evidência real no GitHub do microsserviço auth-service desacoplado], arquivo: "prints/atividade-3-entrega.png")
-  #evidencia([Atividade 3 — Arquitetura de autenticação, endpoints e recuperação de senha], arquivo: "prints/atividade-3-resultado.png")
+  #evidencia([Atividade 3 — Evidência do commit d46eed2 no GitHub com microsserviço de autenticação], arquivo: "prints/atividade-3-entrega.svg")
+  #evidencia([Atividade 3 — Resultado do sistema (Auth Service desacoplado, login e recuperação de senha)], arquivo: "prints/atividade-3-resultado.svg")
 
   *Dificuldades e resolução.* Configuração da comunicação interna HTTP entre os contêineres e garantia de integridade da sessão do usuário sem expor as rotas internas de autenticação para a internet pública.
 ]
@@ -214,8 +213,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Implementação do modelo de controle de acesso baseado em papel (RBAC) com validação estrita no servidor (Padrão A Centralizado). O sistema estabeleceu os papéis `usuario` e `admin`, restringindo a moderação de comentários de terceiros, a consulta à lista de usuários e a alteração de privilégios com o retorno estrito de `HTTP 403 Forbidden` no backend para usuários não autorizados.
 
-  #evidencia([Atividade 4 — Evidência do commit 21f3b2b no GitHub com regras RBAC], arquivo: "prints/atividade-4-entrega.png")
-  #evidencia([Atividade 4 — Resultado real do sistema (Formulário de cadastro com seleção de papéis RBAC no servidor)], arquivo: "prints/atividade-4-resultado.png")
+  #evidencia([Atividade 4 — Evidência do commit 21f3b2b no GitHub com regras RBAC], arquivo: "prints/atividade-4-entrega.svg")
+  #evidencia([Atividade 4 — Resultado do sistema (Enforcement 403 Forbidden e Painel Administrativo)], arquivo: "prints/atividade-4-resultado.svg")
 
   *Dificuldades e resolução.* Eliminar qualquer dependência de validações client-side no frontend, garantindo que o backend fizesse a checagem em tempo real junto ao `auth-service` para cada ação protegida.
 ]
@@ -231,8 +230,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Criação de um microsserviço dedicado de observabilidade e auditoria (`log-service`) integrado ao Redis. Utilizando a estrutura de dados de alta performance *Redis Streams* com o comando `XADD`, o sistema passou a registrar de forma imutável todos os eventos críticos (login, 2FA, cadastro, postagem/exclusão de comentários, moderação, uploads e tentativas de acesso negadas 403), disponibilizando a consulta via comando `XRANGE` exclusivamente para administradores.
 
-  #evidencia([Atividade 5 — Evidência real no GitHub da criação do microsserviço log-service (Commit bc388a8)], arquivo: "prints/atividade-5-entrega.png")
-  #evidencia([Atividade 5 — Trilha de auditoria em Redis Streams com XADD/XRANGE], arquivo: "prints/atividade-5-resultado.png")
+  #evidencia([Atividade 5 — Evidência do commit bc388a8 no GitHub com log-service e Redis Streams], arquivo: "prints/atividade-5-entrega.svg")
+  #evidencia([Atividade 5 — Resultado do sistema (Trilha de auditoria em Redis Streams com XADD/XRANGE)], arquivo: "prints/atividade-5-resultado.svg")
 
   *Dificuldades e resolução.* Definir a serialização correta de payloads complexos no formato chave-valor do Redis Streams sem sobrecarregar o tempo de resposta das rotas principais da aplicação.
 ]
@@ -248,8 +247,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Transformação do catálogo em uma rede social cinematográfica completa. Implementação de upload de imagens de avatar direcionadas ao *MinIO Object Storage* (`cgr.dev/chainguard/minio:latest`), gravando apenas a chave de referência no MariaDB e servindo as imagens por streaming reverso com cache HTTP (`Cache-Control: 86400`). A página de perfil passou a exibir nome, e-mail real do usuário, biografia editável, estatísticas de engajamento e vitrine de favoritos. Adicionalmente, implementou-se autenticação em duas etapas (2FA via e-mail OTP) e validação de e-mails reais com checagem DNS MX.
 
-  #evidencia([Atividade 6 — Evidência do commit 98b334a no GitHub com MinIO Object Storage e 2FA], arquivo: "prints/atividade-6-entrega.png")
-  #evidencia([Atividade 6 — Resultado real do sistema (Perfil social com foto no MinIO Object Storage, bio, e-mail real e favoritos)], arquivo: "prints/atividade-6-resultado.png")
+  #evidencia([Atividade 6 — Evidência do commit 98b334a no GitHub com MinIO Object Storage e 2FA], arquivo: "prints/atividade-6-entrega.svg")
+  #evidencia([Atividade 6 — Resultado do sistema (Rede social com foto no MinIO, bio, e-mail e estatísticas)], arquivo: "prints/atividade-6-resultado.svg")
 
   *Dificuldades e resolução.* Substituição da imagem MinIO do Docker Hub por uma imagem pública aberta e segura da Chainguard para contornar restrições de pull no Portainer, além de implementar entrega reversa das fotos mantendo o MinIO isolado na rede interna Docker.
 ]
@@ -269,7 +268,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Especificação completa da API sob o padrão OpenAPI 3.0 em `openapi.json`, disponibilizando a interface interativa Swagger UI acessível publicamente em `/apidocs` com documentação detalhada de rotas, parâmetros, schemas JSON de requisição e códigos de retorno HTTP.
 
-  #evidencia([Atividade E1 — Interface Swagger UI interativa documentando todos os endpoints RESTful], arquivo: "prints/atividade-e1-resultado.png")
+  #evidencia([Atividade E1 — Interface Swagger UI interativa documentando todos os endpoints RESTful], arquivo: "prints/atividade-e1-resultado.svg")
 ]
 
 #atividade(
@@ -283,7 +282,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Configuração de pipeline automatizado em `.github/workflows/ci-cd.yml` acionado a cada push ou pull request na branch `main`. O pipeline executa a suíte de testes de validação lógica e de contrato OpenAPI, além de construir e validar as imagens Docker dos microsserviços.
 
-  #evidencia([Atividade E2 — Pipeline de CI/CD automatizado no GitHub Actions com testes e build], arquivo: "prints/atividade-e2-resultado.png")
+  #evidencia([Atividade E2 — Pipeline de CI/CD automatizado no GitHub Actions com testes e build], arquivo: "prints/atividade-e2-resultado.svg")
 ]
 
 #atividade(
@@ -297,8 +296,7 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Implementação de monitoramento de saúde profundo em `/health` com testes ativos no MariaDB, Auth Service, Redis Streams e MinIO Storage, e exportador de métricas em `/metrics` no padrão OpenMetrics (Prometheus) com dashboard visual moderno para acompanhamento de latência, uptime e tráfego.
 
-  #evidencia([Atividade E3 — Painel de observabilidade e Health Check em tempo real (MariaDB e Auth Service UP)], arquivo: "prints/atividade-e3-health.png")
-  #evidencia([Atividade E3 — Dashboard de telemetria e métricas do sistema no padrão Prometheus (OpenMetrics)], arquivo: "prints/atividade-e3-metricas.png")
+  #evidencia([Atividade E3 — Dashboard visual de saúde e métricas Prometheus em tempo real], arquivo: "prints/atividade-e3-resultado.svg")
 ]
 
 // ============================================================
