@@ -179,8 +179,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Construção da primeira versão do catálogo cinematográfico em Node.js e Express, integrando-se à API RESTful do The Movie Database (TMDB) para carregar dinamicamente a filmografia completa do ator Tom Hanks. Foi implementado o banco relacional MariaDB para persistência de favoritos segregados por usuário e listagem em grade responsiva com pôsteres e avaliações.
 
-  #evidencia([Atividade 2 — Evidência do commit b61415d no GitHub com data/hora e repositório], arquivo: "prints/atividade-2-entrega.svg")
-  #evidencia([Atividade 2 — Resultado real do catálogo dinâmico (187 filmes TMDB, busca e notas)], arquivo: "prints/atividade-2-catalogo.png")
+  #evidencia([Atividade 2 — Evidência real no GitHub da estrutura do serviço catalog-service], arquivo: "prints/atividade-2-entrega.png")
+  #evidencia([Atividade 2 — Resultado real do catálogo dinâmico (187 filmes TMDB, barra de busca e avaliações)], arquivo: "prints/atividade-2-catalogo.png")
   #evidencia([Atividade 2 — Vitrine de filmes favoritados persistidos no banco MariaDB], arquivo: "prints/atividade-2-resultado.png")
 
   *Dificuldades e resolução.* A proteção da chave privada de API do TMDB foi o ponto crítico, resolvida pela segregação da chave em variáveis de ambiente (`.env` e Docker Compose), evitando vazamento de credenciais no código-fonte.
@@ -197,8 +197,8 @@ A tabela a seguir sintetiza as atividades desenvolvidas ao longo do bimestre, co
 )[
   *O que foi feito.* Desacoplamento da arquitetura monolítica com a criação do microsserviço independente `auth-service`. A autenticação passou a utilizar criptografia forte com hash bcrypt (`salt=10`), fluxo seguro de recuperação de senha com tokens de expiração de 30 minutos e envio automático de e-mails transacionais com Nodemailer e Mailtrap, interligados na rede interna bridge do Docker.
 
-  #evidencia([Atividade 3 — Evidência do commit d46eed2 no GitHub com microsserviço de autenticação], arquivo: "prints/atividade-3-entrega.svg")
-  #evidencia([Atividade 3 — Resultado do sistema (Auth Service desacoplado, login e recuperação de senha)], arquivo: "prints/atividade-3-resultado.svg")
+  #evidencia([Atividade 3 — Evidência real no GitHub do microsserviço auth-service desacoplado], arquivo: "prints/atividade-3-entrega.png")
+  #evidencia([Atividade 3 — Arquitetura de autenticação, endpoints e recuperação de senha], arquivo: "prints/atividade-3-resultado.svg")
 
   *Dificuldades e resolução.* Configuração da comunicação interna HTTP entre os contêineres e garantia de integridade da sessão do usuário sem expor as rotas internas de autenticação para a internet pública.
 ]
