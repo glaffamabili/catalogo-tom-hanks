@@ -22,6 +22,7 @@
     { "name": "Favoritos", "description": "Gerenciamento de filmes favoritos do usuário" },
     { "name": "Comentários & Moderação RBAC", "description": "Postagem e moderação comunitária restrita por papel" },
     { "name": "Administração & Auditoria", "description": "Gerenciamento de usuários e consulta de logs no Redis Streams" },
+    { "name": "Pagamentos & Stripe (Atividade 7)", "description": "Endpoints de Checkout, Webhooks assinados e gestão do Plano Premium via Stripe" },
     { "name": "Observabilidade", "description": "Health checks de dependências e métricas Prometheus" }
   ],
   "paths": {
@@ -319,6 +320,81 @@
         "tags": ["Administração & Auditoria"],
         "summary": "Consultar logs de auditoria no Redis Streams (Exclusivo Admin)",
         "responses": { "200": { "description": "Lista de eventos de auditoria" } }
+      }
+    },
+    "/api/premium/checkout": {
+      "post": {
+        "tags": ["Pagamentos & Stripe (Atividade 7)"],
+        "summary": "Criar uma Stripe Checkout Session para o Plano Premium (R$ 9,90/mês)",
+        "responses": {
+          "200": {
+            "description": "Sessão do Stripe criada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": { "type": "string" },
+                    "url": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Usuário não autenticado" }
+        }
+      }
+    },
+    "/api/webhooks/stripe": {
+      "post": {
+        "tags": ["Pagamentos & Stripe (Atividade 7)"],
+        "summary": "Receber e processar Webhooks assinados criptograficamente pelo Stripe",
+        "description": "Valida o header `stripe-signature` com HMAC SHA-256 e atualiza o usuário no banco para `is_premium: 1` de forma assíncrona quando o evento `checkout.session.completed` for recebido.",
+        "responses": {
+          "200": { "description": "Webhook processado com sucesso" },
+          "400": { "description": "Assinatura do webhook inválida ou erro no payload" }
+        }
+      }
+    },
+    "/api/premium/status": {
+      "get": {
+        "tags": ["Pagamentos & Stripe (Atividade 7)"],
+        "summary": "Consultar status do Plano Premium do usuário logado",
+        "responses": {
+          "200": {
+            "description": "Status da assinatura retornado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "is_premium": { "type": "boolean" },
+                    "stripe_customer_id": { "type": "string" },
+                    "stripe_subscription_id": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/premium/cancel": {
+      "post": {
+        "tags": ["Pagamentos & Stripe (Atividade 7)"],
+        "summary": "Cancelar assinatura do Plano Premium e reverter privilégios para usuário comum",
+        "responses": {
+          "200": { "description": "Assinatura cancelada" }
+        }
+      }
+    },
+    "/api/premium/simulate-webhook": {
+      "post": {
+        "tags": ["Pagamentos & Stripe (Atividade 7)"],
+        "summary": "Simular confirmação de pagamento para testes locais / CI sem chave Stripe real",
+        "responses": {
+          "200": { "description": "Simulação concluída com sucesso" }
+        }
       }
     },
     "/health": {

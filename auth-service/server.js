@@ -126,7 +126,33 @@ async function initDb() {
       await pool.query("UPDATE usuarios SET email_verificado = 1 WHERE email_verificado = 0");
     }
 
-    console.log('Banco de dados do Auth Service inicializado com sucesso.');
+    // Colunas do Plano Premium com Stripe (Atividade 7)
+    const [colsPrem] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'is_premium'");
+    if (colsPrem.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN is_premium TINYINT(1) DEFAULT 0");
+    }
+
+    const [colsCust] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'stripe_customer_id'");
+    if (colsCust.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN stripe_customer_id VARCHAR(255) NULL");
+    }
+
+    const [colsSub] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'stripe_subscription_id'");
+    if (colsSub.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN stripe_subscription_id VARCHAR(255) NULL");
+    }
+
+    const [colsSince] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'premium_since'");
+    if (colsSince.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN premium_since DATETIME NULL");
+    }
+
+    const [colsUntil] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'premium_until'");
+    if (colsUntil.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN premium_until DATETIME NULL");
+    }
+
+    console.log('Banco de dados do Auth Service inicializado com sucesso (com suporte a Plano Premium Stripe).');
   } catch (err) {
     console.error('Erro ao inicializar tabelas do banco no Auth Service:', err);
   }
@@ -681,7 +707,7 @@ app.post('/reset-password', async (req, res) => {
 app.get('/verify-user/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, nome, email, role, bio, foto_chave, email_verificado FROM usuarios WHERE id = ?', 
+      'SELECT id, nome, email, role, bio, foto_chave, email_verificado, is_premium, stripe_customer_id, stripe_subscription_id, premium_since, premium_until FROM usuarios WHERE id = ?', 
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
@@ -704,7 +730,7 @@ app.put('/profile/:id', async (req, res) => {
     );
 
     const [rows] = await pool.query(
-      'SELECT id, nome, email, role, bio, foto_chave FROM usuarios WHERE id = ?',
+      'SELECT id, nome, email, role, bio, foto_chave, is_premium FROM usuarios WHERE id = ?',
       [userId]
     );
 
@@ -720,7 +746,7 @@ app.put('/profile/:id', async (req, res) => {
 app.get('/users', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, nome, email, role, email_verificado, foto_chave FROM usuarios ORDER BY id ASC'
+      'SELECT id, nome, email, role, email_verificado, foto_chave, is_premium, stripe_customer_id, premium_since FROM usuarios ORDER BY id ASC'
     );
     res.json(rows);
   } catch (err) {
@@ -750,6 +776,33 @@ app.patch('/users/:id/role', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar papel:', err);
     res.status(500).json({ error: 'Erro ao atualizar papel do usuário.' });
+  }
+});
+
+// 12. Atualizar Status do Plano Premium (Webhook Stripe / Gestão)
+app.patch('/users/:id/premium', async (req, res) => {
+  const { is_premium, stripe_customer_id, stripe_subscription_id, premium_until } = req.body;
+  try {
+    const isPremVal = is_premium ? 1 : 0;
+    const premiumSince = isPremVal ? new Date() : null;
+
+    await pool.query(`
+      UPDATE usuarios 
+      SET is_premium = ?,
+          stripe_customer_id = COALESCE(?, stripe_customer_id),
+          stripe_subscription_id = COALESCE(?, stripe_subscription_id),
+          premium_since = IF(? = 1, COALESCE(premium_since, NOW()), NULL),
+          premium_until = ?
+      WHERE id = ?
+    `, [isPremVal, stripe_customer_id || null, stripe_subscription_id || null, isPremVal, premium_until || null, req.params.id]);
+
+    const [rows] = await pool.query('SELECT id, nome, email, role, is_premium, stripe_customer_id, premium_since FROM usuarios WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+    res.json({ success: true, user: rows[0] });
+  } catch (err) {
+    console.error('Erro ao atualizar status premium:', err);
+    res.status(500).json({ error: 'Erro ao atualizar status premium do usuário.' });
   }
 });
 

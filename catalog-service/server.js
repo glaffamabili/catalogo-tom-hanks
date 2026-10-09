@@ -5,6 +5,7 @@ const fetch = require('node-fetch');
 const path = require('path');
 const Minio = require('minio');
 const multer = require('multer');
+const Stripe = require('stripe');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -28,6 +29,24 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Configuração do Stripe SDK (Atividade 7 — Modo de Teste)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+
+let stripe = null;
+if (STRIPE_SECRET_KEY) {
+  try {
+    stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
+    console.log('[Stripe] SDK inicializado em modo:', STRIPE_SECRET_KEY.startsWith('sk_test_') ? 'TESTE (Test Mode)' : 'PRODUÇÃO');
+  } catch (err) {
+    console.warn('[Stripe] Erro ao instanciar Stripe SDK:', err.message);
+  }
+}
+
+// O Webhook do Stripe precisa receber o payload como Buffer bruto para validação de assinatura HMAC
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -105,6 +124,27 @@ async function initStorageAndDb() {
         INDEX (tmdb_movie_id)
       ) ENGINE=InnoDB;
     `);
+
+    // Migração de colunas do Plano Premium na tabela usuarios (Atividade 7)
+    const [colsPrem] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'is_premium'");
+    if (colsPrem.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN is_premium TINYINT(1) DEFAULT 0");
+    }
+
+    const [colsCust] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'stripe_customer_id'");
+    if (colsCust.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN stripe_customer_id VARCHAR(255) NULL");
+    }
+
+    const [colsSub] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'stripe_subscription_id'");
+    if (colsSub.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN stripe_subscription_id VARCHAR(255) NULL");
+    }
+
+    const [colsSince] = await pool.query("SHOW COLUMNS FROM usuarios LIKE 'premium_since'");
+    if (colsSince.length === 0) {
+      await pool.query("ALTER TABLE usuarios ADD COLUMN premium_since DATETIME NULL");
+    }
 
     console.log('Tabelas do Catálogo verificadas/inicializadas com sucesso.');
   } catch (err) {
@@ -329,6 +369,8 @@ app.get('/api/me', exigeLogin, async (req, res) => {
     if (!response.ok) return res.status(response.status).json(user);
 
     const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+    const isPremium = user.is_premium === 1 || user.is_premium === true;
+
     res.json({
       id: user.id,
       nome: user.nome,
@@ -336,7 +378,10 @@ app.get('/api/me', exigeLogin, async (req, res) => {
       role: user.role || 'usuario',
       bio: user.bio || '',
       foto_chave: user.foto_chave,
-      foto_url: fotoUrl
+      foto_url: fotoUrl,
+      is_premium: isPremium,
+      stripe_customer_id: user.stripe_customer_id,
+      premium_since: user.premium_since
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao validar perfil no Auth Service.' });
@@ -360,6 +405,7 @@ app.get('/api/profile', exigeLogin, async (req, res) => {
     const [favRows] = await pool.query('SELECT * FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC', [req.session.userId]);
 
     const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+    const isPremium = user.is_premium === 1 || user.is_premium === true;
 
     res.json({
       id: user.id,
@@ -369,6 +415,11 @@ app.get('/api/profile', exigeLogin, async (req, res) => {
       bio: user.bio || 'Adorador de cinema e dos grandes clássicos de Tom Hanks!',
       foto_url: fotoUrl,
       foto_chave: user.foto_chave,
+      is_premium: isPremium,
+      stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id,
+      premium_since: user.premium_since,
+      limite_favoritos: isPremium || user.role === 'admin' ? 'Ilimitado (VIP)' : 'Máx. 3 filmes',
       total_favoritos: favCount.total,
       total_comentarios: commCount.total,
       favoritos: favRows
@@ -392,6 +443,7 @@ app.get('/api/profile/:id', exigeLogin, async (req, res) => {
     const [favRows] = await pool.query('SELECT tmdb_movie_id, titulo, poster_path FROM favoritos WHERE usuario_id = ? ORDER BY criado_em DESC LIMIT 10', [targetId]);
 
     const fotoUrl = user.foto_chave ? `/api/profile/avatar/${user.foto_chave}` : null;
+    const isPremium = user.is_premium === 1 || user.is_premium === true;
 
     // Retorna apenas dados públicos seguros (Privacidade LGPD)
     res.json({
@@ -400,6 +452,7 @@ app.get('/api/profile/:id', exigeLogin, async (req, res) => {
       role: user.role || 'usuario',
       bio: user.bio || 'Membro da comunidade do Catálogo Tom Hanks.',
       foto_url: fotoUrl,
+      is_premium: isPremium,
       total_favoritos: favCount.total,
       total_comentarios: commCount.total,
       favoritos: favRows
@@ -520,6 +573,303 @@ app.get('/api/profile/avatar/:key', async (req, res) => {
 });
 
 // ==========================================
+// ROTAS DO PLANO PREMIUM (STRIPE PAGAMENTOS & WEBHOOKS) - ATIVIDADE 7
+// ==========================================
+
+// 1. Webhook Oficial do Stripe (Recebe confirmações assíncronas do Stripe com validação de assinatura)
+app.post('/api/webhooks/stripe', async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  if (stripe && STRIPE_WEBHOOK_SECRET && sig) {
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.error('⚠️ [Stripe Webhook] Falha na validação da assinatura HMAC:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  } else {
+    // Modo de fallback / teste / simulação
+    try {
+      event = typeof req.body === 'string' || Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body;
+    } catch (e) {
+      return res.status(400).send('Invalid JSON payload');
+    }
+  }
+
+  console.log(`[Stripe Webhook] Evento recebido: ${event.type}`);
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const usuarioId = session.client_reference_id || (session.metadata && session.metadata.usuario_id);
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+
+        if (usuarioId) {
+          // Atualiza usuário para Premium no banco de dados
+          await pool.query(
+            'UPDATE usuarios SET is_premium = 1, stripe_customer_id = ?, stripe_subscription_id = ?, premium_since = NOW() WHERE id = ?',
+            [customerId || null, subscriptionId || null, usuarioId]
+          );
+
+          // Notifica Auth Service
+          try {
+            await fetch(`${AUTH_SERVICE_URL}/users/${usuarioId}/premium`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                is_premium: 1,
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId
+              })
+            });
+          } catch (syncErr) {
+            console.warn('[Stripe Sync] Auth Service sincronização secundária:', syncErr.message);
+          }
+
+          registrarLogAuditoria({
+            usuario_id: parseInt(usuarioId, 10),
+            acao: 'PLANO_PREMIUM_ASSINADO',
+            detalhes: {
+              stripe_session_id: session.id,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              valor_pago: session.amount_total ? (session.amount_total / 100) : 9.90,
+              moeda: session.currency || 'brl',
+              modo: session.mode || 'subscription'
+            },
+            ip: req.ip
+          });
+
+          console.log(`✅ [Stripe] Usuário ID ${usuarioId} ativado como PREMIUM com sucesso!`);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
+        if (customerId) {
+          await pool.query(
+            'UPDATE usuarios SET is_premium = 0 WHERE stripe_customer_id = ? OR stripe_subscription_id = ?',
+            [customerId, subscription.id]
+          );
+
+          registrarLogAuditoria({
+            acao: 'PLANO_PREMIUM_CANCELADO',
+            detalhes: { stripe_subscription_id: subscription.id, stripe_customer_id: customerId },
+            ip: req.ip
+          });
+          console.log(`ℹ️ [Stripe] Assinatura ${subscription.id} cancelada no banco de dados.`);
+        }
+        break;
+      }
+
+      default:
+        console.log(`[Stripe Webhook] Evento informativo: ${event.type}`);
+    }
+
+    res.json({ received: true, event_type: event.type });
+  } catch (err) {
+    console.error('[Stripe Webhook] Erro ao processar:', err);
+    res.status(500).json({ error: 'Erro interno ao processar webhook do Stripe.' });
+  }
+});
+
+// 2. Criar Checkout Session do Stripe (Redirecionamento para pagamento)
+app.post('/api/premium/checkout', exigeLogin, async (req, res) => {
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    if (!authRes.ok) return res.status(401).json({ error: 'Usuário não autenticado.' });
+    const user = await authRes.json();
+
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const proto = req.get('x-forwarded-proto') || req.protocol;
+    const baseUrl = process.env.APP_URL || `${proto}://${host}`;
+
+    // Se Stripe SDK e chave estiverem configurados, cria sessão oficial no Stripe
+    if (stripe && STRIPE_SECRET_KEY && !STRIPE_SECRET_KEY.includes('placeholder')) {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [
+          {
+            price_data: {
+              currency: 'brl',
+              product_data: {
+                name: 'Plano Premium — Catálogo Tom Hanks',
+                description: 'Favoritos Ilimitados, Selo VIP [PREMIUM 👑] e Recursos Exclusivos',
+              },
+              unit_amount: 990, // R$ 9,90/mês
+              recurring: { interval: 'month' }
+            },
+            quantity: 1
+          }
+        ],
+        customer_email: user.email,
+        client_reference_id: String(user.id),
+        metadata: {
+          usuario_id: String(user.id),
+          usuario_nome: user.nome,
+          usuario_email: user.email
+        },
+        success_url: `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}&premium_success=true`,
+        cancel_url: `${baseUrl}/?premium_canceled=true`
+      });
+
+      registrarLogAuditoria({
+        usuario_id: user.id,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'CHECKOUT_STRIPE_CRIADO',
+        detalhes: { session_id: session.id, modo: 'subscription', valor: 'R$ 9,90/mês' },
+        ip: req.ip
+      });
+
+      return res.json({ url: session.url, sessionId: session.id, isLiveStripe: true });
+    } else {
+      // Modo de Teste / Simulador Integrado para demonstração sem chave externa
+      const mockSessionId = 'cs_test_' + require('crypto').randomBytes(12).toString('hex');
+      const checkoutUrl = `/stripe-checkout.html?session_id=${mockSessionId}&user_id=${user.id}&nome=${encodeURIComponent(user.nome)}&email=${encodeURIComponent(user.email)}`;
+
+      registrarLogAuditoria({
+        usuario_id: user.id,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'CHECKOUT_STRIPE_SIMULADOR_CRIADO',
+        detalhes: { session_id: mockSessionId, valor: 'R$ 9,90/mês', modo: 'test_simulation' },
+        ip: req.ip
+      });
+
+      return res.json({ url: checkoutUrl, sessionId: mockSessionId, isSimulated: true });
+    }
+  } catch (err) {
+    console.error('Erro ao gerar checkout session no Stripe:', err);
+    res.status(500).json({ error: 'Erro ao conectar com o serviço Stripe: ' + err.message });
+  }
+});
+
+// 3. Simulação de Webhook (Para demonstração prática e testes em ambiente isolado)
+app.post('/api/premium/simulate-webhook', exigeLogin, async (req, res) => {
+  const { session_id, user_id, email } = req.body;
+  const targetUserId = user_id || req.session.userId;
+
+  try {
+    const customerId = 'cus_test_' + require('crypto').randomBytes(8).toString('hex');
+    const subscriptionId = 'sub_test_' + require('crypto').randomBytes(8).toString('hex');
+
+    await pool.query(
+      'UPDATE usuarios SET is_premium = 1, stripe_customer_id = ?, stripe_subscription_id = ?, premium_since = NOW() WHERE id = ?',
+      [customerId, subscriptionId, targetUserId]
+    );
+
+    // Notifica Auth Service
+    try {
+      await fetch(`${AUTH_SERVICE_URL}/users/${targetUserId}/premium`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_premium: 1,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId
+        })
+      });
+    } catch (e) {}
+
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${targetUserId}`);
+    const user = authRes.ok ? await authRes.json() : { nome: 'Usuário', email };
+
+    registrarLogAuditoria({
+      usuario_id: parseInt(targetUserId, 10),
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: 'PLANO_PREMIUM_ASSINADO',
+      detalhes: {
+        stripe_session_id: session_id || 'cs_test_manual',
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        valor_pago: 9.90,
+        moeda: 'brl',
+        modo: 'simulado_stripe_test'
+      },
+      ip: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'Plano Premium ativado com sucesso! Webhook processado.',
+      is_premium: true,
+      stripe_customer_id: customerId
+    });
+  } catch (err) {
+    console.error('Erro na simulação do webhook:', err);
+    res.status(500).json({ error: 'Erro ao processar ativação: ' + err.message });
+  }
+});
+
+// 4. Status e Benefícios do Plano Premium
+app.get('/api/premium/status', exigeLogin, async (req, res) => {
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    if (!authRes.ok) return res.status(401).json({ error: 'Usuário não autenticado.' });
+    const user = await authRes.json();
+
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM favoritos WHERE usuario_id = ?', [req.session.userId]);
+    const isPremium = user.is_premium === 1 || user.is_premium === true;
+
+    res.json({
+      is_premium: isPremium,
+      role: user.role,
+      stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id,
+      premium_since: user.premium_since,
+      beneficios: {
+        favoritos_usados: total,
+        favoritos_limite: isPremium || user.role === 'admin' ? 'Ilimitado' : 3,
+        selo_vip: isPremium || user.role === 'admin',
+        acesso_prioritario: isPremium || user.role === 'admin'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao consultar status premium.' });
+  }
+});
+
+// 5. Cancelamento do Plano Premium
+app.post('/api/premium/cancel', exigeLogin, async (req, res) => {
+  try {
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    if (!authRes.ok) return res.status(401).json({ error: 'Usuário não autenticado.' });
+    const user = await authRes.json();
+
+    if (stripe && user.stripe_subscription_id && !user.stripe_subscription_id.startsWith('sub_test_')) {
+      try {
+        await stripe.subscriptions.cancel(user.stripe_subscription_id);
+      } catch (stripeErr) {
+        console.warn('[Stripe Cancel] Erro no Stripe API:', stripeErr.message);
+      }
+    }
+
+    await pool.query('UPDATE usuarios SET is_premium = 0 WHERE id = ?', [req.session.userId]);
+
+    registrarLogAuditoria({
+      usuario_id: user.id,
+      usuario_nome: user.nome,
+      usuario_email: user.email,
+      acao: 'PLANO_PREMIUM_CANCELADO',
+      detalhes: { stripe_customer_id: user.stripe_customer_id },
+      ip: req.ip
+    });
+
+    res.json({ success: true, message: 'Assinatura do Plano Premium cancelada com sucesso.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao cancelar assinatura: ' + err.message });
+  }
+});
+
+// ==========================================
 // ROTAS DE DOMÍNIO (FILMES, FAVORITOS, COMENTÁRIOS)
 // ==========================================
 
@@ -549,24 +899,60 @@ app.get('/api/favorites', exigeLogin, async (req, res) => {
   }
 });
 
-// Adicionar aos Favoritos
+// Adicionar aos Favoritos (Enforcement de Limite: 3 filmes para Grátis, Ilimitado para Premium)
 app.post('/api/favorites', exigeLogin, async (req, res) => {
   const { tmdb_movie_id, titulo, poster_path } = req.body;
   try {
+    // 1. Obter informações de papel e premium do usuário
+    const authRes = await fetch(`${AUTH_SERVICE_URL}/verify-user/${req.session.userId}`);
+    const user = authRes.ok ? await authRes.json() : { role: 'usuario', is_premium: 0 };
+    
+    const isVip = user.role === 'admin' || user.is_premium === 1 || user.is_premium === true;
+
+    // 2. Contar quantos favoritos o usuário já possui
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM favoritos WHERE usuario_id = ?', [req.session.userId]);
+
+    // Limite da regra de negócio: usuários comuns podem favoritar no máximo 3 filmes
+    const LIMITE_FAVORITOS_GRATIS = 3;
+    if (!isVip && total >= LIMITE_FAVORITOS_GRATIS) {
+      registrarLogAuditoria({
+        usuario_id: req.session.userId,
+        usuario_nome: user.nome,
+        usuario_email: user.email,
+        acao: 'LIMITE_FAVORITOS_BLOQUEADO_403',
+        detalhes: {
+          total_atual: total,
+          limite: LIMITE_FAVORITOS_GRATIS,
+          filme_tentado: titulo,
+          motivo: 'upgrade_premium_necessario'
+        },
+        ip: req.ip
+      });
+
+      return res.status(403).json({
+        error: `Limite de favoritos atingido (${total}/${LIMITE_FAVORITOS_GRATIS} filmes). Assine o Plano Premium por R$ 9,90/mês para ter favoritos ilimitados e selo VIP!`,
+        limitReached: true,
+        currentTotal: total,
+        maxLimit: LIMITE_FAVORITOS_GRATIS,
+        code: 'UPGRADE_REQUIRED'
+      });
+    }
+
     await pool.query('INSERT INTO favoritos (usuario_id, tmdb_movie_id, titulo, poster_path) VALUES (?, ?, ?, ?)', 
       [req.session.userId, tmdb_movie_id, titulo, poster_path]);
     
     registrarLogAuditoria({
       usuario_id: req.session.userId,
       acao: 'FAVORITAR_FILME',
-      detalhes: { tmdb_movie_id, titulo },
+      detalhes: { tmdb_movie_id, titulo, is_premium: isVip, total_atual: total + 1 },
       ip: req.ip
     });
 
-    res.json({ success: true });
+    res.json({ success: true, is_premium: isVip, total_favoritos: total + 1 });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Filme já favoritado.' });
-    res.status(500).json({ error: 'Erro ao favoritar.' });
+    console.error('Erro ao favoritar:', err);
+    res.status(500).json({ error: 'Erro ao favoritar filme.' });
   }
 });
 
@@ -580,12 +966,12 @@ app.delete('/api/favorites/:tmdbId', exigeLogin, async (req, res) => {
   }
 });
 
-// Listar Comentários da Comunidade (Privacidade: Exibe apenas nome, bio e foto, NUNCA e-mails ou senhas)
+// Listar Comentários da Comunidade (com Selo VIP Premium para assinantes)
 app.get('/api/comments', exigeLogin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT c.id, c.usuario_id, c.tmdb_movie_id, c.texto, c.criado_em,
-             u.nome AS autor_nome, u.role AS autor_role,
+             u.nome AS autor_nome, u.role AS autor_role, u.is_premium AS autor_is_premium,
              u.foto_chave AS autor_foto_chave, u.bio AS autor_bio
       FROM comentarios c
       LEFT JOIN usuarios u ON c.usuario_id = u.id
@@ -600,6 +986,7 @@ app.get('/api/comments', exigeLogin, async (req, res) => {
       criado_em: c.criado_em,
       autor_nome: c.autor_nome || 'Usuário',
       autor_role: c.autor_role || 'usuario',
+      autor_is_premium: c.autor_is_premium === 1 || c.autor_is_premium === true,
       autor_bio: c.autor_bio || '',
       autor_foto_url: c.autor_foto_chave ? `/api/profile/avatar/${c.autor_foto_chave}` : null
     }));

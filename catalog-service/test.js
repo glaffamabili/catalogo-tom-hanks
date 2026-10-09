@@ -20,9 +20,13 @@ assert(openapiContent.paths['/api/profile/avatar/{key}'], 'Rota /api/profile/ava
 assert(openapiContent.paths['/api/verify-email'], 'Rota /api/verify-email ausente na spec OpenAPI');
 assert(openapiContent.paths['/api/verify-2fa'], 'Rota /api/verify-2fa ausente na spec OpenAPI');
 assert(openapiContent.paths['/api/admin/logs'], 'Rota /api/admin/logs ausente na spec OpenAPI');
+assert(openapiContent.paths['/api/premium/checkout'], 'Rota /api/premium/checkout ausente na spec OpenAPI');
+assert(openapiContent.paths['/api/webhooks/stripe'], 'Rota /api/webhooks/stripe ausente na spec OpenAPI');
+assert(openapiContent.paths['/api/premium/status'], 'Rota /api/premium/status ausente na spec OpenAPI');
+assert(openapiContent.paths['/api/premium/cancel'], 'Rota /api/premium/cancel ausente na spec OpenAPI');
 assert(openapiContent.paths['/health'], 'Rota /health ausente na spec OpenAPI');
 assert(openapiContent.paths['/metrics'], 'Rota /metrics ausente na spec OpenAPI');
-console.log('  ✅ [Teste 1/5] Contrato OpenAPI 3.0 (2FA, MinIO, Perfis, RBAC, Auditoria) validado com sucesso.');
+console.log('  ✅ [Teste 1/6] Contrato OpenAPI 3.0 (2FA, MinIO, Perfis, RBAC, Stripe, Auditoria) validado com sucesso.');
 
 // Teste 2: Validação de dependências essenciais
 assert(require('express'), 'Express não disponível');
@@ -31,7 +35,8 @@ assert(require('cookie-session'), 'cookie-session não disponível');
 assert(require('node-fetch'), 'node-fetch não disponível');
 assert(require('minio'), 'MinIO SDK não disponível');
 assert(require('multer'), 'Multer não disponível');
-console.log('  ✅ [Teste 2/5] Módulos e dependências essenciais carregados com sucesso.');
+assert(require('stripe'), 'Stripe SDK não disponível');
+console.log('  ✅ [Teste 2/6] Módulos e dependências essenciais (incluindo Stripe SDK) carregados com sucesso.');
 
 // Teste 3: Validação da regra de autorização RBAC (Enforcement lógico)
 function validarPermissaoExclusaoComentario(usuarioId, autorId, usuarioRole) {
@@ -44,7 +49,7 @@ function validarPermissaoExclusaoComentario(usuarioId, autorId, usuarioRole) {
 assert.strictEqual(validarPermissaoExclusaoComentario(10, 10, 'usuario'), 200, 'Dono do comentário deveria poder excluir');
 assert.strictEqual(validarPermissaoExclusaoComentario(99, 10, 'admin'), 200, 'Admin deveria poder excluir qualquer comentário');
 assert.strictEqual(validarPermissaoExclusaoComentario(99, 10, 'usuario'), 403, 'Usuário comum NÃO deve poder excluir comentário de outro');
-console.log('  ✅ [Teste 3/5] Regra de segurança RBAC (403 Forbidden para não-donos) validada com sucesso.');
+console.log('  ✅ [Teste 3/6] Regra de segurança RBAC (403 Forbidden para não-donos) validada com sucesso.');
 
 // Teste 4: Validação de upload de imagem para MinIO
 function validarUploadFoto(mimetype, sizeBytes) {
@@ -63,7 +68,7 @@ assert.strictEqual(validarUploadFoto('image/jpeg', 1024 * 500).valido, true, 'JP
 assert.strictEqual(validarUploadFoto('image/png', 1024 * 1024 * 2).valido, true, 'PNG de 2MB deve ser válido');
 assert.strictEqual(validarUploadFoto('application/pdf', 1024).valido, false, 'PDF deve ser rejeitado');
 assert.strictEqual(validarUploadFoto('image/jpeg', 1024 * 1024 * 6).valido, false, 'Imagem maior que 5MB deve ser rejeitada');
-console.log('  ✅ [Teste 4/5] Regras de validação de imagens do Object Storage MinIO validadas com sucesso.');
+console.log('  ✅ [Teste 4/6] Regras de validação de imagens do Object Storage MinIO validadas com sucesso.');
 
 // Teste 5: Validação lógica de e-mail real e bloqueio de e-mails falsos
 function checarEmailFormatoEBloqueio(email) {
@@ -78,7 +83,26 @@ function checarEmailFormatoEBloqueio(email) {
 assert.strictEqual(checarEmailFormatoEBloqueio('amabili@gmail.com'), true, 'E-mail real com formato correto deve ser aceito');
 assert.strictEqual(checarEmailFormatoEBloqueio('teste@fake.com'), false, 'E-mail com domínio falso deve ser rejeitado');
 assert.strictEqual(checarEmailFormatoEBloqueio('invalido@@email..com'), false, 'E-mail com formato corrompido deve ser rejeitado');
-console.log('  ✅ [Teste 5/5] Regras de proteção de e-mails reais e bloqueio de falsos validadas com sucesso.');
+console.log('  ✅ [Teste 5/6] Regras de proteção de e-mails reais e bloqueio de falsos validadas com sucesso.');
+
+// Teste 6: Validação de Regra de Negócio do Plano Premium (Atividade 7 - Limite de Favoritos)
+function validarLimiteFavoritos(totalFavoritosAtuais, isPremium) {
+  const LIMITE_FREE = 3;
+  if (!isPremium && totalFavoritosAtuais >= LIMITE_FREE) {
+    return { permitido: false, status: 403, code: 'UPGRADE_REQUIRED' };
+  }
+  return { permitido: true, status: 200 };
+}
+
+assert.strictEqual(validarLimiteFavoritos(0, false).permitido, true, 'Usuário gratuito pode favoritar 1º filme');
+assert.strictEqual(validarLimiteFavoritos(2, false).permitido, true, 'Usuário gratuito pode favoritar 3º filme');
+assert.strictEqual(validarLimiteFavoritos(3, false).permitido, false, 'Usuário gratuito NÃO pode favoritar 4º filme (limite: 3)');
+assert.strictEqual(validarLimiteFavoritos(3, false).status, 403, 'Bloqueio de limite deve retornar HTTP 403');
+assert.strictEqual(validarLimiteFavoritos(3, false).code, 'UPGRADE_REQUIRED', 'Código de erro deve ser UPGRADE_REQUIRED');
+
+assert.strictEqual(validarLimiteFavoritos(3, true).permitido, true, 'Usuário Premium pode favoritar mais de 3 filmes (ilimitado)');
+assert.strictEqual(validarLimiteFavoritos(100, true).permitido, true, 'Usuário Premium pode favoritar centenas de filmes');
+console.log('  ✅ [Teste 6/6] Regras de negócio do Plano Premium Stripe (limite de 3 vs ilimitado) validadas com sucesso.');
 
 console.log('🎉 [CI Test - Catalog Service] Todos os testes passaram com sucesso!\n');
 process.exit(0);

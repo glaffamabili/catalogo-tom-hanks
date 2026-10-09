@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stripe Checkout — Plano Premium Tom Hanks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0a2540;
+      --card-bg: #ffffff;
+      --text: #30313d;
+      --muted: #6b7280;
+      --primary: #635bff;
+      --primary-hover: #534be0;
+      --border: #e6e8eb;
+      --stripe-blue: #00d4ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
+
+    body {
+      background: #f6f9fc;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .checkout-container {
+      width: 100%;
+      max-width: 960px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 50px 100px -20px rgba(50,50,93,0.15), 0 30px 60px -30px rgba(0,0,0,0.2);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+    }
+
+    @media (max-width: 768px) {
+      .checkout-container { grid-template-columns: 1fr; }
+    }
+
+    /* Lado Esquerdo - Resumo do Pedido */
+    .summary-pane {
+      background: #0a2540;
+      color: #ffffff;
+      padding: 44px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .test-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 187, 0, 0.15);
+      border: 1px solid rgba(255, 187, 0, 0.35);
+      color: #ffc107;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 24px;
+    }
+
+    .merchant-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .merchant-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e50914, #b20710);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #ffffff;
+    }
+
+    .merchant-title { font-size: 16px; font-weight: 700; color: #ffffff; }
+    .merchant-sub { font-size: 12px; color: #93a1b8; }
+
+    .plan-price-block {
+      margin-bottom: 28px;
+    }
+
+    .plan-price-label { font-size: 13px; color: #93a1b8; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
+    .plan-price-val { font-size: 38px; font-weight: 800; color: #ffffff; margin-top: 4px; }
+    .plan-price-cycle { font-size: 14px; font-weight: 500; color: #93a1b8; }
+
+    .benefits-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .benefit-item i {
+      color: #00d4ff;
+      font-size: 13px;
+    }
+
+    .stripe-footer-brand {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stripe-footer-brand i { color: #635bff; }
+
+    /* Lado Direito - Formulário de Pagamento */
+    .form-pane {
+      padding: 44px 40px;
+      background: #ffffff;
+    }
+
+    .form-header {
+      margin-bottom: 28px;
+    }
+
+    .form-title { font-size: 20px; font-weight: 800; color: #1a1f36; }
+    .form-subtitle { font-size: 13px; color: #697386; margin-top: 4px; }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #3c4257;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1a1f36;
+      background: #fcfdfe;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #635bff;
+      box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
+      background: #ffffff;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+
+    .card-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .card-logos {
+      display: flex;
+      gap: 6px;
+      font-size: 20px;
+      color: #635bff;
+    }
+
+    .test-card-hint {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-pay {
+      width: 100%;
+      background: #635bff;
+      color: #ffffff;
+      border: none;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(99,91,255,0.3);
+      transition: all 0.2s;
+    }
+
+    .btn-pay:hover {
+      background: #534be0;
+      box-shadow: 0 6px 16px rgba(99,91,255,0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-pay:disabled {
+      background: #a5a2f7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-cancel {
+      display: block;
+      text-align: center;
+      margin-top: 14px;
+      color: #697386;
+      font-size: 13px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .btn-cancel:hover { color: #1a1f36; text-decoration: underline; }
+
+    .security-note {
+      text-align: center;
+      font-size: 11px;
+      color: #8792a2;
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="checkout-container">
+    <!-- Resumo do Pedido (Stripe Pane) -->
+    <div class="summary-pane">
+      <div>
+        <div class="test-badge">
+          <i class="fa-solid fa-flask"></i> Modo de Teste Stripe
+        </div>
+
+        <div class="merchant-info">
+          <div class="merchant-avatar"><i class="fa-solid fa-film"></i></div>
+          <div>
+            <div class="merchant-title">Catálogo Tom Hanks</div>
+            <div class="merchant-sub">ISW055 · Introdução à Computação em Nuvem</div>
+          </div>
+        </div>
+
+        <div class="plan-price-block">
+          <div class="plan-price-label">Assinatura Mensal</div>
+          <div class="plan-price-val">R$ 9,90 <span class="plan-price-cycle">/ mês</span></div>
+        </div>
+
+        <ul class="benefits-list">
+          <li class="benefit-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Favoritos Ilimitados</strong> (sem travas)</span>
+          </li>
+          <li class="benefit-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Selo VIP Dourado</strong> no perfil e comentários</span>
+          </li>
+          <li class="benefit-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Fotos em Alta Definição</strong> via MinIO</span>
+          </li>
+          <li class="benefit-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Auditoria Transparente</strong> em Redis Streams</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="stripe-footer-brand">
+        <i class="fa-brands fa-stripe" style="font-size: 28px;"></i>
+        <span>Pagamento 100% seguro com criptografia de ponta a ponta</span>
+      </div>
+    </div>
+
+    <!-- Formulário de Pagamento -->
+    <div class="form-pane">
+      <div class="form-header">
+        <h2 class="form-title">Pagar com Cartão</h2>
+        <p class="form-subtitle">Preencha os dados do cartão de teste para simular o pagamento.</p>
+      </div>
+
+      <div class="test-card-hint">
+        <i class="fa-solid fa-info-circle"></i>
+        <span>Cartão de teste oficial do Stripe configurado automaticamente.</span>
+      </div>
+
+      <form id="stripeForm">
+        <div class="form-group">
+          <label class="form-label">E-mail do Assinante</label>
+          <input type="email" id="customerEmail" class="form-input" readonly>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nome no Cartão</label>
+          <input type="text" id="cardHolder" class="form-input" value="AMABILI FLOR" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Informações do Cartão</label>
+          <div class="card-box">
+            <div class="card-box-header">
+              <span style="font-size: 12px; font-weight: 600; color: #64748b;">Número do Cartão</span>
+              <div class="card-logos">
+                <i class="fa-brands fa-cc-visa"></i>
+                <i class="fa-brands fa-cc-mastercard"></i>
+              </div>
+            </div>
+            <input type="text" id="cardNumber" class="form-input" value="4242 •••• •••• 4242" style="font-family: 'Roboto Mono', monospace; font-weight: 600;" readonly>
+            
+            <div class="form-row" style="margin-top: 10px;">
+              <div>
+                <label class="form-label" style="font-size: 11px;">Validade</label>
+                <input type="text" class="form-input" value="12 / 28" style="font-family: 'Roboto Mono', monospace;" readonly>
+              </div>
+              <div>
+                <label class="form-label" style="font-size: 11px;">CVC / CVV</label>
+                <input type="text" class="form-input" value="123" style="font-family: 'Roboto Mono', monospace;" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" id="btnSubmit" class="btn-pay">
+          <i class="fa-solid fa-lock"></i> Pagar R$ 9,90 e Ativar Plano Premium
+        </button>
+
+        <a href="/" class="btn-cancel">Cancelar e voltar ao catálogo</a>
+
+        <div class="security-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>Processado em conformidade PCI-DSS pelo Stripe (Modo de Teste)</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id') || 'cs_test_' + Math.random().toString(36).substring(2);
+    const userId = params.get('user_id');
+    const email = params.get('email') || 'usuario@exemplo.com';
+    const nome = params.get('nome') || 'Assinante Tom Hanks';
+
+    document.getElementById('customerEmail').value = decodeURIComponent(email);
+    if (nome) document.getElementById('cardHolder').value = decodeURIComponent(nome).toUpperCase();
+
+    document.getElementById('stripeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Confirmando pagamento no Stripe...';
+
+      try {
+        const res = await fetch('/api/premium/simulate-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            user_id: userId,
+            email: email
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Pagamento Aprovado! Redirecionando...';
+          btn.style.background = '#10b981';
+          setTimeout(() => {
+            window.location.href = `/?session_id=${sessionId}&premium_success=true`;
+          }, 1200);
+        } else {
+          alert('Erro ao processar: ' + (data.error || 'Falha na confirmação.'));
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-lock"></i> Tentar Novamente';
+        }
+      } catch (err) {
+        alert('Erro de comunicação: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> Tentar Novamente';
+      }
+    });
+  </script>
+</body>
+</html>

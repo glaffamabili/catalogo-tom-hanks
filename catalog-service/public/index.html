@@ -176,6 +176,63 @@
       border: 1px solid rgba(59, 130, 246, 0.4);
     }
 
+    .badge-vip {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0b0f19;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+    }
+
+    .nav-btn-premium {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+    }
+
+    .nav-btn-premium:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+    }
+
+    .premium-feature-list {
+      list-style: none;
+      margin: 18px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .premium-feature-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-main);
+    }
+
+    .premium-feature-item i {
+      color: var(--accent-gold);
+      font-size: 14px;
+    }
+
     .btn-logout {
       background: transparent;
       border: 1px solid var(--border-color);
@@ -1087,6 +1144,60 @@
     </div>
   </div>
 
+  <!-- MODAL: PLANO PREMIUM (STRIPE) -->
+  <div id="premium-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px; text-align: center; border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: 0 15px 40px rgba(245, 158, 11, 0.2);">
+      <button class="modal-close" onclick="fecharModal('premium-modal')"><i class="fa-solid fa-xmark"></i></button>
+      
+      <div style="width: 56px; height: 56px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #0b0f19; box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+
+      <span class="badge-vip" style="font-size: 11px; margin-bottom: 8px;">STRIPE CHECKOUT • MODO DE TESTE</span>
+      <h3 style="font-size: 22px; font-weight: 800; margin: 8px 0 4px; color: #fff;">Plano Premium Tom Hanks</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">
+        Desbloqueie todos os recursos cinematográficos sem limites.
+      </p>
+
+      <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 20px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <span style="font-size: 14px; font-weight: 700; color: #94a3b8;">Assinatura Mensal</span>
+          <div>
+            <span style="font-size: 28px; font-weight: 800; color: #f59e0b;">R$ 9,90</span>
+            <span style="font-size: 12px; color: var(--text-muted);">/mês</span>
+          </div>
+        </div>
+
+        <ul class="premium-feature-list">
+          <li class="premium-feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Favoritos Ilimitados</strong> (Plano gratuito limitado a 3)</span>
+          </li>
+          <li class="premium-feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Selo VIP Dourado 👑</strong> no perfil e nos comentários</span>
+          </li>
+          <li class="premium-feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Segurança PCI-DSS</strong> (Cobrança direta via Stripe)</span>
+          </li>
+          <li class="premium-feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <span><strong>Cancele quando quiser</strong> diretamente no perfil</span>
+          </li>
+        </ul>
+      </div>
+
+      <button id="btn-checkout-stripe" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #0b0f19; font-weight: 800; font-size: 14px; padding: 12px; border: none; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);" onclick="iniciarStripeCheckout()">
+        <i class="fa-brands fa-stripe" style="font-size: 20px; margin-right: 6px;"></i> Assinar com Stripe Checkout (R$ 9,90/mês)
+      </button>
+
+      <p style="font-size: 11px; color: var(--text-dim); margin-top: 14px;">
+        <i class="fa-solid fa-shield-halved"></i> Modo de teste: use o cartão <code>4242 4242 4242 4242</code>. Nenhuma cobrança real.
+      </p>
+    </div>
+  </div>
+
   <!-- SEÇÃO DE AUTENTICAÇÃO -->
   <div id="auth-section" class="auth-wrapper">
     <div class="auth-card">
@@ -1253,6 +1364,9 @@
         </div>
 
         <div class="nav-links">
+          <button id="nav-premium-btn" class="nav-btn-premium" onclick="abrirModal('premium-modal')">
+            <i class="fa-solid fa-crown"></i> Seja Premium
+          </button>
           <a href="/apidocs" target="_blank" class="nav-link-btn">
             <i class="fa-solid fa-book" style="color: #10b981;"></i> Swagger API
           </a>
@@ -1267,6 +1381,7 @@
             <div class="user-avatar-slot" id="user-avatar-slot">U</div>
             <span id="user-display" style="font-size: 13px; font-weight: 700;">Usuário</span>
             <span class="role-tag" id="role-display">USUÁRIO</span>
+            <span id="vip-badge-display" class="badge-vip hidden"><i class="fa-solid fa-crown"></i> VIP</span>
           </div>
 
           <button onclick="logout()" class="btn-logout">
@@ -1328,6 +1443,7 @@
               <div class="profile-name">
                 <span id="profile-name">Carregando...</span>
                 <span class="role-tag" id="profile-role-tag">USUÁRIO</span>
+                <span id="profile-vip-tag" class="badge-vip hidden"><i class="fa-solid fa-crown"></i> VIP PREMIUM</span>
                 <button class="btn btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-flex;" onclick="abrirModalEdicaoBio()">
                   <i class="fa-solid fa-pen-to-square"></i> Editar Biografia
                 </button>
@@ -1356,8 +1472,8 @@
           </div>
         </div>
 
-        <!-- Estatísticas Sociais -->
-        <div class="profile-stats-grid">
+        <!-- Estatísticas Sociais & Plano -->
+        <div class="profile-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
           <div class="stat-card">
             <i class="fa-solid fa-heart" style="color: var(--accent);"></i>
             <div class="val" id="profile-stat-favs">0</div>
@@ -1367,6 +1483,12 @@
             <i class="fa-solid fa-comments" style="color: var(--accent-blue);"></i>
             <div class="val" id="profile-stat-comms">0</div>
             <div class="lbl">Comentários Postados</div>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-crown" style="color: var(--accent-gold);"></i>
+            <div class="val" id="profile-stat-plan" style="font-size: 16px; margin-top: 6px; color: #f59e0b;">Gratuito</div>
+            <div class="lbl" id="profile-stat-plan-lbl">Limite: 3 Favoritos</div>
+            <div id="profile-plan-actions" style="margin-top: 10px;"></div>
           </div>
           <div class="stat-card">
             <i class="fa-solid fa-cloud-arrow-up" style="color: var(--accent-green);"></i>
@@ -1758,6 +1880,27 @@
         roleBadge.innerText = (usuarioAtual.role || 'usuario').toUpperCase();
         roleBadge.className = `role-tag ${usuarioAtual.role || 'usuario'}`;
 
+        // Selos e status VIP / Premium
+        const vipNavBadge = document.getElementById('vip-badge-display');
+        const navPremiumBtn = document.getElementById('nav-premium-btn');
+        const profileVipTag = document.getElementById('profile-vip-tag');
+
+        if (usuarioAtual.is_premium) {
+          if (vipNavBadge) vipNavBadge.classList.remove('hidden');
+          if (profileVipTag) profileVipTag.classList.remove('hidden');
+          if (navPremiumBtn) {
+            navPremiumBtn.innerHTML = '<i class="fa-solid fa-crown"></i> VIP Premium';
+            navPremiumBtn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+          }
+        } else {
+          if (vipNavBadge) vipNavBadge.classList.add('hidden');
+          if (profileVipTag) profileVipTag.classList.add('hidden');
+          if (navPremiumBtn) {
+            navPremiumBtn.innerHTML = '<i class="fa-solid fa-crown"></i> Seja Premium';
+            navPremiumBtn.style.background = '';
+          }
+        }
+
         if (usuarioAtual.foto_url) {
           document.getElementById('user-avatar-slot').innerHTML = `<img src="${usuarioAtual.foto_url}?t=${Date.now()}" class="user-avatar-img" alt="Foto">`;
         } else {
@@ -1771,6 +1914,16 @@
           carregarContadorUsuarios();
         } else {
           adminTab.classList.add('hidden');
+        }
+
+        // Verifica retorno do Stripe Checkout via Query Params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('premium_success') === 'true') {
+          showToast('🎉 Parabéns! Sua assinatura Premium foi confirmada pelo Stripe com sucesso!', 'success');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (urlParams.get('premium_canceled') === 'true') {
+          showToast('Checkout do Stripe cancelado. Você pode assinar quando quiser!', 'info');
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         await carregarFavoritos();
@@ -1828,13 +1981,31 @@
         if (!res.ok) return;
         const perfil = await res.json();
 
-        // Nome & E-mail Real (atende exatamente o que o usuário solicitou)
+        // Nome & E-mail Real
         document.getElementById('profile-name').innerText = perfil.nome || usuarioAtual.nome;
         document.getElementById('profile-email-display').innerText = perfil.email || usuarioAtual.email;
         
         const roleTag = document.getElementById('profile-role-tag');
         roleTag.innerText = (perfil.role || 'usuario').toUpperCase();
         roleTag.className = `role-tag ${perfil.role || 'usuario'}`;
+
+        // Status do Plano
+        const statPlan = document.getElementById('profile-stat-plan');
+        const statPlanLbl = document.getElementById('profile-stat-plan-lbl');
+        const planActions = document.getElementById('profile-plan-actions');
+        const profileVipTag = document.getElementById('profile-vip-tag');
+
+        if (perfil.is_premium) {
+          if (profileVipTag) profileVipTag.classList.remove('hidden');
+          statPlan.innerHTML = '<span style="color: #f59e0b; font-weight: 800;"><i class="fa-solid fa-crown"></i> VIP Premium</span>';
+          statPlanLbl.innerText = 'Favoritos Ilimitados';
+          planActions.innerHTML = `<button class="btn btn-outline" style="font-size: 11px; padding: 4px 8px; width: auto; color: #f87171; border-color: rgba(239,68,68,0.4);" onclick="cancelarAssinatura()">Cancelar Assinatura</button>`;
+        } else {
+          if (profileVipTag) profileVipTag.classList.add('hidden');
+          statPlan.innerHTML = '<span style="color: #94a3b8; font-weight: 700;">Gratuito</span>';
+          statPlanLbl.innerText = 'Limite: 3 Favoritos';
+          planActions.innerHTML = `<button class="btn btn-primary" style="font-size: 11px; padding: 5px 10px; width: auto; background: linear-gradient(135deg, #f59e0b, #d97706); color: #0b0f19; font-weight: 800; border: none;" onclick="abrirModal('premium-modal')"><i class="fa-solid fa-crown"></i> Fazer Upgrade</button>`;
+        }
 
         document.getElementById('profile-bio-text').innerText = perfil.bio || 'Adorador de cinema e dos grandes clássicos de Tom Hanks!';
         document.getElementById('profile-stat-favs').innerText = perfil.total_favoritos || 0;
@@ -2046,6 +2217,9 @@
           showToast(`"${titulo}" adicionado aos seus favoritos! ❤️`, 'success');
           await carregarFavoritos();
           filtrarFilmes();
+        } else if (res.status === 403 && data.code === 'UPGRADE_REQUIRED') {
+          showToast(data.error || 'Limite de 3 favoritos atingido! Faça upgrade para o Plano Premium para ter favoritos ilimitados. ⭐', 'error');
+          abrirModal('premium-modal');
         } else {
           showToast(data.error || 'Filme já está nos favoritos.', 'info');
         }
@@ -2140,13 +2314,18 @@
             ? `<img src="${c.autor_foto_url}" class="user-avatar-img" alt="Avatar">`
             : (c.autor_nome || 'U').charAt(0).toUpperCase();
 
+          const vipTagHtml = c.autor_is_premium 
+            ? `<span class="badge-vip" style="font-size: 9px; margin-left: 6px;"><i class="fa-solid fa-crown"></i> VIP</span>`
+            : '';
+
           return `
             <div class="comment-item">
               <div class="comment-avatar">${avatarHtml}</div>
               <div class="comment-content">
                 <div class="comment-header">
-                  <div>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                     <span class="comment-author-name">${c.autor_nome || 'Usuário'}</span>
+                    ${vipTagHtml}
                     <span class="comment-movie-tag"><i class="fa-solid fa-film"></i> ${nomeFilme}</span>
                   </div>
                   <span class="comment-date">${c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR') : ''}</span>
@@ -2173,6 +2352,59 @@
         }
       } catch (err) {
         showToast('Erro ao comunicar com o servidor.', 'error');
+      }
+    }
+
+    // ==========================================
+    // STRIPE CHECKOUT & PLANO PREMIUM
+    // ==========================================
+    async function iniciarStripeCheckout() {
+      const btn = document.getElementById('btn-checkout-stripe');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando Checkout Session...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/premium/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.url) {
+            window.location.href = data.url;
+          } else if (data.simulatedUrl) {
+            window.location.href = data.simulatedUrl;
+          } else {
+            showToast('Sessão de checkout criada.', 'info');
+          }
+        } else {
+          showToast(data.error || 'Erro ao iniciar checkout do Stripe.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação com o servidor.', 'error');
+      } finally {
+        btn.innerHTML = '<i class="fa-brands fa-stripe" style="font-size: 20px; margin-right: 6px;"></i> Assinar com Stripe Checkout (R$ 9,90/mês)';
+        btn.disabled = false;
+      }
+    }
+
+    async function cancelarAssinatura() {
+      if (!confirm('Tem certeza que deseja cancelar sua assinatura Premium?')) return;
+      try {
+        const res = await fetch('/api/premium/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Assinatura Premium cancelada com sucesso.', 'info');
+          await carregarDados();
+        } else {
+          showToast(data.error || 'Erro ao cancelar assinatura.', 'error');
+        }
+      } catch (err) {
+        showToast('Erro de comunicação.', 'error');
       }
     }
 
